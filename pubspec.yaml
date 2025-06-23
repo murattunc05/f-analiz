@@ -1,0 +1,60 @@
+name: futbol_analiz_app
+description: "A new Flutter project."
+publish_to: 'none' # Remove this line if you wish to publish to pub.dev
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.7.2 # SDK versiyonunuz farklı olabilir, kendi dosyanızdaki ile aynı kalsın
+
+dependencies:
+  flutter:
+    sdk: flutter
+    
+
+  cupertino_icons: ^1.0.8
+  http: ^1.0.0 # Veya güncel versiyonunuz
+  csv: ^5.0.0  # Veya güncel versiyonunuz
+  unorm_dart: ^0.2.0 # Veya güncel versiyonunuz
+  provider: ^6.1.5 # Veya güncel versiyonunuz
+  flutter_riverpod: ^2.5.1
+  shared_preferences: ^2.2.2 # Veya güncel versiyonunuz
+  package_info_plus: ^5.0.1
+  fl_chart: ^1.0.0
+  flutter_staggered_animations: ^1.1.1
+  flutter_animate: ^4.5.2
+  flutter_spinkit: ^5.2.0
+  cached_network_image: ^3.3.1
+  palette_generator: ^0.3.3+7
+  flutter_svg: ^2.2.0
+  intl: ^0.20.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  flutter_lints: ^5.0.0 # Versiyonunuz farklı olabilir, kendi dosyanızdaki ile aynı kalsın
+  flutter_launcher_icons: ^0.13.1 # BURAYA EKLENDİ (pub.dev'den en son sürümü kontrol edin)
+  flutter_staggered_animations: ^1.1.1
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/icon/
+    - assets/logos/leagues/ # Bu satır, assets/icon klasöründeki tüm dosyaları dahil eder
+    # VEYA spesifik olarak dosyanızı belirtebilirsiniz:
+    # - assets/icon/app_icon.png
+
+  # assets:
+  #   - assets/icon/app_icon.png # Eğer ikonunuzu buraya koyacaksanız bu satırı aktif edin
+
+# flutter_launcher_icons yapılandırması (dosyanın en altına veya flutter: bloğunun dışına)
+flutter_launcher_icons:
+  android: "launcher_icon" # Oluşturulacak ikonun adı (mipmap klasörlerinde)
+  ios: true
+  image_path: "assets/icon/app_icon.png" # İkon dosyanızın PROJE KÖK DİZİNİNE GÖRE YOLU
+  min_sdk_android: 21 # İsteğe bağlı
+  # adaptive_icon_background: "#FFFFFF" # Android 8+ adaptif ikonlar için arka plan
+  # adaptive_icon_foreground: "assets/icon/app_icon_foreground.png" # Adaptif ikonlar için ön plan (ayrı bir dosya)
+  # remove_alpha_ios: true # iOS ikonlarından alfa kanalını kaldırmak için (opsiyonel)
