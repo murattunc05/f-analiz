@@ -5,10 +5,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
-import 'comparison_screen.dart';
-import 'single_team_screen.dart';
-import 'advanced_comparison_screen.dart';
+// DEĞİŞİKLİK: Yeni analiz ekranı import edildi, diğerleri kaldırıldı
 import 'home_feed_screen.dart';
+import 'matches_screen.dart';
+import 'analysis_screen.dart'; 
 import 'app_themes.dart';
 import 'data_service.dart';
 import 'utils/dialog_utils.dart';
@@ -182,7 +182,8 @@ class HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _pageController = PageController(initialPage: _selectedIndex);
-    _scrollControllers = List.generate(4, (_) => ScrollController());
+    // DEĞİŞİKLİK: Scroll controller sayısı 3'e düşürüldü
+    _scrollControllers = List.generate(3, (_) => ScrollController());
     _updateWidgetOptions();
   }
 
@@ -202,6 +203,7 @@ class HomeScreenState extends State<HomeScreen> {
   }
 
   void _updateWidgetOptions() {
+    // DEĞİŞİKLİK: Widget listesi yeni 3 sekmeli yapıya göre güncellendi
     _widgetOptions = <Widget>[
       HomeFeedScreen(
         key: const ValueKey('homeFeedScreen'),
@@ -210,28 +212,18 @@ class HomeScreenState extends State<HomeScreen> {
         scaffoldKey: _scaffoldKey,
         onSearchTap: _openSearchScreen,
       ),
-      ComparisonScreen(
-        key: const ValueKey('comparisonScreen'),
-        statsSettings: widget.currentStatsSettings,
-        currentSeasonApiValue: widget.currentSeasonApiValue,
+      MatchesScreen(
+        key: const ValueKey('matchesScreen'),
         scrollController: _scrollControllers[1],
-        scaffoldKey: _scaffoldKey, 
+        scaffoldKey: _scaffoldKey,
         onSearchTap: _openSearchScreen,
       ),
-      SingleTeamScreen(
-        key: const ValueKey('singleTeamScreen'),
+      AnalysisScreen(
+        key: const ValueKey('analysisScreen'),
         statsSettings: widget.currentStatsSettings,
         currentSeasonApiValue: widget.currentSeasonApiValue,
         scrollController: _scrollControllers[2],
-        scaffoldKey: _scaffoldKey,
-        onSearchTap: _openSearchScreen,
-      ),
-      AdvancedComparisonScreen(
-        key: const ValueKey('advancedComparisonScreen'),
-        statsSettings: widget.currentStatsSettings,
-        currentSeasonApiValue: widget.currentSeasonApiValue,
-        scrollController: _scrollControllers[3],
-        scaffoldKey: _scaffoldKey,
+        scaffoldKey: _scaffoldKey, 
         onSearchTap: _openSearchScreen,
       ),
     ];
@@ -249,9 +241,6 @@ class HomeScreenState extends State<HomeScreen> {
       }
     }
   }
-
-  // onPageChanged metodu artık kullanılmayacak
-  // void _onPageChanged(int index) { if (mounted) setState(() => _selectedIndex = index); }
 
   @override
   void dispose() {
@@ -394,17 +383,16 @@ class HomeScreenState extends State<HomeScreen> {
       drawer: Drawer(child: ListView(padding: EdgeInsets.zero,children: <Widget>[Container(height: 120, padding: const EdgeInsets.fromLTRB(16.0, 40.0, 16.0, 8.0), decoration: BoxDecoration(color: theme.colorScheme.primary), child: Align(alignment: Alignment.centerLeft, child: Text('Ayarlar', style: theme.textTheme.headlineSmall?.copyWith(color: theme.colorScheme.onPrimary)))), ListTile(leading: Icon( widget.currentBrightnessPreference == BrightnessPreference.light ? Icons.light_mode_outlined : widget.currentBrightnessPreference == BrightnessPreference.dark ? Icons.dark_mode_outlined : Icons.brightness_auto_outlined ), title: Text( widget.currentBrightnessPreference == BrightnessPreference.light ? 'Mod: Aydınlık' : widget.currentBrightnessPreference == BrightnessPreference.dark ? 'Mod: Koyu' : 'Mod: Sistem Varsayılanı' ), onTap: () { BrightnessPreference nextPreference; if (widget.currentBrightnessPreference == BrightnessPreference.light) { nextPreference = BrightnessPreference.dark; } else if (widget.currentBrightnessPreference == BrightnessPreference.dark) nextPreference = BrightnessPreference.system; else nextPreference = BrightnessPreference.light; widget.onBrightnessPreferenceChanged(nextPreference); }), ListTile(leading: const Icon(Icons.palette_outlined), title: const Text('Temalar'), subtitle: Text('Mevcut: ${_getPaletteDisplayName(widget.currentPalette)}'), onTap: () { Navigator.pop(context); _showThemePaletteSelectionDialog(context); }), ListTile(leading: const Icon(Icons.calendar_today_outlined), title: const Text('Sezon'), subtitle: Text('Geçerli: ${_getDisplaySeason(widget.currentSeasonApiValue)}'), onTap: () { Navigator.pop(context); _showSeasonSelectionDialog(context); }), const Divider(), ListTile(leading: const Icon(Icons.visibility_outlined), title: const Text('Görüntülenecek İstatistikler'), onTap: () { Navigator.pop(context); _showStatsDisplaySettingsDialog(context); }), ListTile(leading: const Icon(Icons.info_outline), title: const Text('Hakkında'), onTap: () { Navigator.pop(context); _showAboutDialog(context); })])),
       body: PageView(
         controller: _pageController,
-        physics: const NeverScrollableScrollPhysics(), // Kaydırmayı engelle
-        // onPageChanged: _onPageChanged, // Artık gerekli değil
+        physics: const NeverScrollableScrollPhysics(), 
         children: _widgetOptions,
       ),
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed, 
+        // DEĞİŞİKLİK: Navigasyon barı 3 sekmeye düşürüldü
         items: const <BottomNavigationBarItem>[
           BottomNavigationBarItem(icon: Icon(Icons.dynamic_feed_outlined), activeIcon: Icon(Icons.dynamic_feed), label: 'Akış'),
-          BottomNavigationBarItem(icon: Icon(Icons.compare_arrows_outlined), activeIcon: Icon(Icons.compare_arrows), label: 'Karşılaştır'),
-          BottomNavigationBarItem(icon: Icon(Icons.person_search_outlined), activeIcon: Icon(Icons.person_search), label: 'Tek Takım'),
-          BottomNavigationBarItem(icon: Icon(Icons.insights_outlined), activeIcon: Icon(Icons.insights), label: 'Gelişmiş')
+          BottomNavigationBarItem(icon: Icon(Icons.sports_soccer_outlined), activeIcon: Icon(Icons.sports_soccer), label: 'Maçlar'),
+          BottomNavigationBarItem(icon: Icon(Icons.analytics_outlined), activeIcon: Icon(Icons.analytics), label: 'Analiz'),
         ], 
         currentIndex: _selectedIndex, 
         onTap: _onItemTapped

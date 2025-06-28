@@ -58,13 +58,15 @@ class MatchCardWidget extends StatelessWidget {
           InkWell(
             onTap: onTap,
             child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 20.0, horizontal: 12.0),
+              // DEĞİŞİKLİK: Dikey padding azaltıldı
+              padding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 12.0),
               child: Column(
                 children: [
                   Text(league['name'], style: theme.textTheme.bodyLarge?.copyWith(color: textColor, fontWeight: FontWeight.bold)),
                   if (league['round'] != null)
                      Padding(
-                       padding: const EdgeInsets.only(top: 2.0, bottom: 16.0),
+                       // DEĞİŞİKLİK: Dikey boşluk azaltıldı
+                       padding: const EdgeInsets.only(top: 2.0, bottom: 8.0),
                        child: Text(
                          league['round'].replaceAll('Regular Season - ',''), 
                          style: theme.textTheme.bodyMedium?.copyWith(color: textColor.withOpacity(0.8))
@@ -117,7 +119,7 @@ class _TeamDisplay extends StatelessWidget {
             )
           else
             Icon(Icons.shield_outlined, size: 60, color: textColor.withOpacity(0.6)),
-          const SizedBox(height: 8),
+          const SizedBox(height: 4),
           Text(
             team['name'] ?? 'Bilinmiyor',
             textAlign: alignment == CrossAxisAlignment.start ? TextAlign.left : TextAlign.right,

@@ -6,10 +6,9 @@ import 'features/matches/matches_controller.dart';
 import 'widgets/match_card_widget.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:intl/intl.dart';
+import 'widgets/modern_header_widget.dart'; // ModernHeaderWidget import edildi
 
 // --- WIDGET'LAR VE YARDIMCI METOTLAR ---
-// Kodun daha okunabilir olması için yardımcı widget ve metotları ana widget'lardan önce veya sonra,
-// ama kendi class/fonksiyon tanımları içinde doğru bir şekilde gruplandırmak önemlidir.
 
 class CompactMatchCard extends StatelessWidget {
   final Map<String, dynamic> matchData;
@@ -63,13 +62,27 @@ class CompactMatchCard extends StatelessWidget {
 }
 
 class MatchesScreen extends ConsumerWidget {
-  const MatchesScreen({super.key});
+  // DEĞİŞİKLİK: Gerekli parametreler eklendi
+  final GlobalKey<ScaffoldState> scaffoldKey;
+  final VoidCallback onSearchTap;
+  final ScrollController scrollController;
+
+  const MatchesScreen({
+    super.key,
+    required this.scaffoldKey,
+    required this.onSearchTap,
+    required this.scrollController,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final prefsAsyncValue = ref.watch(sharedPreferencesProvider);
     return prefsAsyncValue.when(
-      data: (_) => const _MatchesView(),
+      data: (_) => _MatchesView(
+        scaffoldKey: scaffoldKey,
+        onSearchTap: onSearchTap,
+        scrollController: scrollController,
+      ),
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (e, st) => Center(child: Text('Uygulama başlatılamadı: $e')),
     );
@@ -77,7 +90,16 @@ class MatchesScreen extends ConsumerWidget {
 }
 
 class _MatchesView extends ConsumerWidget {
-  const _MatchesView();
+  // DEĞİŞİKLİK: Gerekli parametreler eklendi
+  final GlobalKey<ScaffoldState> scaffoldKey;
+  final VoidCallback onSearchTap;
+  final ScrollController scrollController;
+
+  const _MatchesView({
+    required this.scaffoldKey,
+    required this.onSearchTap,
+    required this.scrollController,
+  });
 
   static final List<Color> _liveCardColors = [
     const Color(0xFF4A0D66),
@@ -91,71 +113,88 @@ class _MatchesView extends ConsumerWidget {
     final state = ref.watch(matchesControllerProvider);
     final controller = ref.read(matchesControllerProvider.notifier);
 
-    return Column(
-      children: [
-        _buildTopFilterBar(context, ref), // Bu metot artık dosya kapsamında tanımlı
-        Expanded(
-          child: RefreshIndicator(
-            onRefresh: () => controller.fetchMatches(isRefresh: true),
-            child: CustomScrollView(
-              slivers: [
-                _buildSectionHeader(context, "Canlı Maçlar"),
-                state.liveMatches.when(
-                  data: (live) {
-                    final leaguesToShow = state.activeLeagueIds.isEmpty
-                        ? state.selectedCompetitionIds
-                        : state.activeLeagueIds;
-                    final filteredLive = _filterMatches(live, leaguesToShow);
-                    if (filteredLive.isEmpty) {
-                      return SliverToBoxAdapter(child: _buildEmptyLiveCard(context));
-                    }
-                    return _buildHorizontalLiveMatches(context, filteredLive, controller, _liveCardColors);
-                  },
-                  loading: () => const SliverToBoxAdapter(child: Center(child: Padding(padding: EdgeInsets.all(8.0), child: CircularProgressIndicator()))),
-                  error: (e, st) => SliverToBoxAdapter(child: Center(child: Text("Canlı maçlar yüklenemedi: $e"))),
-                ),
-                _buildSectionHeader(context, DateFormat('dd MMMM yyyy, EEEE', 'tr_TR').format(state.selectedDate)),
-                state.selectedDateMatches.when(
-                  data: (matchesForDate) {
-                    final leaguesToShow = state.activeLeagueIds.isEmpty
-                        ? state.selectedCompetitionIds
-                        : state.activeLeagueIds;
-                    final filteredList = _filterMatches(matchesForDate, leaguesToShow);
-
-                    if (filteredList.isEmpty) {
-                      return const SliverToBoxAdapter(child: _EmptyStateMessage(message: "Seçili tarih ve ligler için maç bulunamadı."));
-                    }
-                    
-                    final upcoming = filteredList.where((m) => m['fixture']['status']['short'] == 'NS').toList();
-                    final finished = filteredList.where((m) => ['FT', 'AET', 'PEN'].contains(m['fixture']['status']['short'])).toList();
-
-                    return SliverList(
-                      delegate: SliverChildListDelegate([
-                        if (upcoming.isNotEmpty) ...[
-                          _buildInnerSectionHeader(context, "Yaklaşan Maçlar"),
-                          ...upcoming.map((match) => Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 12.0),
-                                child: CompactMatchCard(matchData: match, onTap: () => controller.onViewMatchDetails(context, match)),
-                              )),
-                        ],
-                        if (finished.isNotEmpty) ...[
-                          _buildInnerSectionHeader(context, "Biten Maçlar"),
-                          ...finished.map((match) => Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 12.0),
-                                child: CompactMatchCard(matchData: match, onTap: () => controller.onViewMatchDetails(context, match)),
-                              )),
-                        ],
-                      ]),
-                    );
-                  },
-                  loading: () => const SliverToBoxAdapter(child: Center(child: CircularProgressIndicator())),
-                  error: (e, st) => SliverToBoxAdapter(child: Center(child: Text("Maçlar yüklenemedi: $e"))),
-                ),
-              ],
+    // DEĞİŞİKLİK: Root widget NestedScrollView olarak değiştirildi
+    return SafeArea(
+      bottom: false,
+      child: NestedScrollView(
+        controller: scrollController,
+        headerSliverBuilder: (context, innerBoxIsScrolled) {
+          return [
+            SliverToBoxAdapter(
+              child: ModernHeaderWidget(
+                onSettingsTap: () => scaffoldKey.currentState?.openDrawer(),
+                onSearchTap: onSearchTap,
+              ),
             ),
-          ),
+          ];
+        },
+        body: Column(
+          children: [
+            _buildTopFilterBar(context, ref),
+            Expanded(
+              child: RefreshIndicator(
+                onRefresh: () => controller.fetchMatches(isRefresh: true),
+                child: CustomScrollView(
+                  slivers: [
+                    _buildSectionHeader(context, "Canlı Maçlar"),
+                    state.liveMatches.when(
+                      data: (live) {
+                        final leaguesToShow = state.activeLeagueIds.isEmpty
+                            ? state.selectedCompetitionIds
+                            : state.activeLeagueIds;
+                        final filteredLive = _filterMatches(live, leaguesToShow);
+                        if (filteredLive.isEmpty) {
+                          return SliverToBoxAdapter(child: _buildEmptyLiveCard(context));
+                        }
+                        return _buildHorizontalLiveMatches(context, filteredLive, controller, _liveCardColors);
+                      },
+                      loading: () => const SliverToBoxAdapter(child: Center(child: Padding(padding: EdgeInsets.all(8.0), child: CircularProgressIndicator()))),
+                      error: (e, st) => SliverToBoxAdapter(child: Center(child: Text("Canlı maçlar yüklenemedi: $e"))),
+                    ),
+                    _buildSectionHeader(context, DateFormat('dd MMMM yyyy, EEEE', 'tr_TR').format(state.selectedDate)),
+                    state.selectedDateMatches.when(
+                      data: (matchesForDate) {
+                        final leaguesToShow = state.activeLeagueIds.isEmpty
+                            ? state.selectedCompetitionIds
+                            : state.activeLeagueIds;
+                        final filteredList = _filterMatches(matchesForDate, leaguesToShow);
+
+                        if (filteredList.isEmpty) {
+                          return const SliverToBoxAdapter(child: _EmptyStateMessage(message: "Seçili tarih ve ligler için maç bulunamadı."));
+                        }
+                        
+                        final upcoming = filteredList.where((m) => m['fixture']['status']['short'] == 'NS').toList();
+                        final finished = filteredList.where((m) => ['FT', 'AET', 'PEN'].contains(m['fixture']['status']['short'])).toList();
+
+                        return SliverList(
+                          delegate: SliverChildListDelegate([
+                            if (upcoming.isNotEmpty) ...[
+                              _buildInnerSectionHeader(context, "Yaklaşan Maçlar"),
+                              ...upcoming.map((match) => Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: 12.0),
+                                    child: CompactMatchCard(matchData: match, onTap: () => controller.onViewMatchDetails(context, match)),
+                                  )),
+                            ],
+                            if (finished.isNotEmpty) ...[
+                              _buildInnerSectionHeader(context, "Biten Maçlar"),
+                              ...finished.map((match) => Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: 12.0),
+                                    child: CompactMatchCard(matchData: match, onTap: () => controller.onViewMatchDetails(context, match)),
+                                  )),
+                            ],
+                          ]),
+                        );
+                      },
+                      loading: () => const SliverToBoxAdapter(child: Center(child: CircularProgressIndicator())),
+                      error: (e, st) => SliverToBoxAdapter(child: Center(child: Text("Maçlar yüklenemedi: $e"))),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ),
-      ],
+      ),
     );
   }
 }

@@ -2,19 +2,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'data_service.dart';
-import 'widgets/league_selection_dialog_content.dart';
-import 'widgets/team_selection_dialog_content.dart';
-import 'widgets/stat_comparison_row.dart';
-import 'main.dart';
-import 'utils.dart';
-import 'utils/dialog_utils.dart';
+import 'package:futbol_analiz_app/main.dart';
+import 'package:futbol_analiz_app/utils.dart';
+import 'package:futbol_analiz_app/utils/dialog_utils.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'services/logo_service.dart';
-import 'services/team_name_service.dart';
-import 'features/team_comparison/comparison_controller.dart';
-import 'widgets/modern_header_widget.dart';
+import 'package:futbol_analiz_app/services/logo_service.dart';
+import 'package:futbol_analiz_app/services/team_name_service.dart';
+import 'package:futbol_analiz_app/features/team_comparison/comparison_controller.dart';
+import 'package:futbol_analiz_app/data_service.dart';
+import 'package:futbol_analiz_app/widgets/league_selection_dialog_content.dart';
+import 'package:futbol_analiz_app/widgets/team_selection_dialog_content.dart';
+import 'package:futbol_analiz_app/widgets/stat_comparison_row.dart';
 
 class ComparisonScreen extends ConsumerWidget {
   final StatsDisplaySettings statsSettings;
@@ -32,7 +31,6 @@ class ComparisonScreen extends ConsumerWidget {
     required this.onSearchTap,
   });
 
-  // Bu ekrana özel gradyan renkleri
   static const List<Color> _cardGradient = [Color(0xff22d3ee), Color(0xff0e7490), Color(0xff4c1d95)];
 
   Future<void> _selectLeague(BuildContext context, WidgetRef ref) async {
@@ -110,7 +108,6 @@ class ComparisonScreen extends ConsumerWidget {
     );
   }
   
-  // YENİ WIDGET: Gradyan çerçeveli kart
   Widget _GradientBorderCard({required Widget child, required BuildContext context}) {
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 8.0),
@@ -136,7 +133,6 @@ class ComparisonScreen extends ConsumerWidget {
     );
   }
 
-  // DEĞİŞİKLİK: Bu metotlar artık en dıştaki Card'ı döndürmüyor, sadece içeriği döndürüyor.
   Widget _buildTeamStatsContent(Map<String, dynamic> team1Data, Map<String, dynamic> team2Data, ThemeData theme, String? selectedLeague) {
     if (!statsSettings.showOverallLast5Stats) return const SizedBox.shrink();
 
@@ -228,76 +224,76 @@ class ComparisonScreen extends ConsumerWidget {
     final team1 = controllerState.originalTeam1;
     final team2 = controllerState.originalTeam2;
 
-    return Scaffold(
-      body: SafeArea(
-        bottom: false,
-        child: ListView(
-          controller: scrollController, padding: EdgeInsets.zero,
-          children: [
-            ModernHeaderWidget(
-              onSettingsTap: () => scaffoldKey.currentState?.openDrawer(),
-              onSearchTap: onSearchTap,
-            ),
-            Padding( padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 8.0),
-              child: _GradientBorderCard( // DEĞİŞİKLİK
-                context: context,
-                child: Padding( padding: const EdgeInsets.all(16.0),
-                  child: Column( mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text("Takım Karşılaştırma", style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold, color: theme.colorScheme.primary)),
-                      const SizedBox(height: 16),
-                      _buildSelectionRow(theme, icon: Icons.shield_outlined, assetPath: selectedLeague != null ? _getLeagueLogoAssetName(selectedLeague) : null, text: selectedLeague ?? 'Lig Seçin', onTap: () => _selectLeague(context, ref)),
-                      const SizedBox(height: 12),
-                      _buildSelectionRow(theme, icon: Icons.group_outlined, logoUrl: selectedLeague != null && team1 != null ? LogoService.getTeamLogoUrl(team1, selectedLeague) : null, text: team1 != null ? TeamNameService.getCorrectedTeamName(team1) : '1. Takım', onTap: () => _selectTeam(context, ref, 1)),
-                      const SizedBox(height: 12),
-                      _buildSelectionRow(theme, icon: Icons.group_outlined, logoUrl: selectedLeague != null && team2 != null ? LogoService.getTeamLogoUrl(team2, selectedLeague) : null, text: team2 != null ? TeamNameService.getCorrectedTeamName(team2) : '2. Takım', onTap: () => _selectTeam(context, ref, 2)),
-                    ],
-                  ),
-                ),
+    // DEĞİŞİKLİK: Scaffold ve SafeArea kaldırıldı, doğrudan ListView döndürülüyor
+    return ListView(
+      controller: scrollController,
+      padding: EdgeInsets.zero,
+      children: [
+        // DEĞİŞİKLİK: ModernHeaderWidget kaldırıldı
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 8.0),
+          child: _GradientBorderCard(
+            context: context,
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text("Takım Karşılaştırma", style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold, color: theme.colorScheme.primary)),
+                  const SizedBox(height: 16),
+                  _buildSelectionRow(theme, icon: Icons.shield_outlined, assetPath: selectedLeague != null ? _getLeagueLogoAssetName(selectedLeague) : null, text: selectedLeague ?? 'Lig Seçin', onTap: () => _selectLeague(context, ref)),
+                  const SizedBox(height: 12),
+                  _buildSelectionRow(theme, icon: Icons.group_outlined, logoUrl: selectedLeague != null && team1 != null ? LogoService.getTeamLogoUrl(team1, selectedLeague) : null, text: team1 != null ? TeamNameService.getCorrectedTeamName(team1) : '1. Takım', onTap: () => _selectTeam(context, ref, 1)),
+                  const SizedBox(height: 12),
+                  _buildSelectionRow(theme, icon: Icons.group_outlined, logoUrl: selectedLeague != null && team2 != null ? LogoService.getTeamLogoUrl(team2, selectedLeague) : null, text: team2 != null ? TeamNameService.getCorrectedTeamName(team2) : '2. Takım', onTap: () => _selectTeam(context, ref, 2)),
+                ],
               ),
             ),
-            Padding( padding: const EdgeInsets.fromLTRB(16.0, 8.0, 16.0, 20.0),
-              child: ElevatedButton.icon(
-                icon: isLoading ? SpinKitThreeBounce(color: theme.colorScheme.onPrimary, size: 18.0) : const Icon(Icons.compare_arrows, size: 20),
-                label: isLoading ? const SizedBox.shrink() : const Text('Takımları Karşılaştır'),
-                onPressed: (selectedLeague == null || isLoading || team1 == null || team2 == null) 
-                    ? null 
-                    : () { 
-                        HapticFeedback.mediumImpact(); 
-                        ref.read(comparisonControllerProvider.notifier).fetchComparisonStats(currentSeasonApiValue);
-                      },
-                style: (isLoading) ? ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 12.0), minimumSize: const Size(64, 48),) : null, 
-              ),
-            ),
-            if (isLoading)
-               const Center(child: Padding(padding: EdgeInsets.all(16.0), child: SpinKitPouringHourGlassRefined(color: Colors.deepOrange, size: 40.0)))
-            else if (controllerState.errorMessage != null)
-               Center(child: Padding(padding: const EdgeInsets.all(16.0), child: Text(controllerState.errorMessage!, textAlign: TextAlign.center, style: TextStyle(color: theme.colorScheme.error, fontSize: 16.0))))
-            else if (controllerState.team1Stats.hasValue && controllerState.team2Stats.hasValue && controllerState.team1Stats.value != null && controllerState.team2Stats.value != null)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16,0,16,16),
-                child: Column(
-                  children: [
-                    _GradientBorderCard( // DEĞİŞİKLİK
-                      context: context,
-                      child: _buildTeamStatsContent(controllerState.team1Stats.value!, controllerState.team2Stats.value!, theme, selectedLeague),
-                    ),
-                    if (controllerState.comparisonResult.hasValue && controllerState.comparisonResult.value != null) ...[
-                      _GradientBorderCard( // DEĞİŞİKLİK
-                         context: context,
-                         child: _buildComparisonResultCard(controllerState.comparisonResult.value!, controllerState.team1Stats.value!, controllerState.team2Stats.value!, theme),
-                      )
-                    ]
-                  ],
-                ),
-              )
-            else
-              const Padding( padding: EdgeInsets.only(top: 32.0, bottom: 32.0),
-                child: Center(child: Text('Karşılaştırma sonuçları burada görünecek.\nLig ve takımları seçip karşılaştırın.', textAlign: TextAlign.center, style: TextStyle(color: Colors.grey))),
-              ),
-          ],
+          ),
         ),
-      ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16.0, 8.0, 16.0, 20.0),
+          child: ElevatedButton.icon(
+            icon: isLoading ? SpinKitThreeBounce(color: theme.colorScheme.onPrimary, size: 18.0) : const Icon(Icons.compare_arrows, size: 20),
+            label: isLoading ? const SizedBox.shrink() : const Text('Takımları Karşılaştır'),
+            onPressed: (selectedLeague == null || isLoading || team1 == null || team2 == null)
+                ? null
+                : () {
+                    HapticFeedback.mediumImpact();
+                    ref.read(comparisonControllerProvider.notifier).fetchComparisonStats(currentSeasonApiValue);
+                  },
+            style: (isLoading) ? ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 12.0), minimumSize: const Size(64, 48),) : null,
+          ),
+        ),
+        if (isLoading)
+          const Center(child: Padding(padding: EdgeInsets.all(16.0), child: SpinKitPouringHourGlassRefined(color: Colors.deepOrange, size: 40.0)))
+        else if (controllerState.errorMessage != null)
+          Center(child: Padding(padding: const EdgeInsets.all(16.0), child: Text(controllerState.errorMessage!, textAlign: TextAlign.center, style: TextStyle(color: theme.colorScheme.error, fontSize: 16.0))))
+        else if (controllerState.team1Stats.hasValue && controllerState.team2Stats.hasValue && controllerState.team1Stats.value != null && controllerState.team2Stats.value != null)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16,0,16,16),
+            child: Column(
+              children: [
+                _GradientBorderCard(
+                  context: context,
+                  child: _buildTeamStatsContent(controllerState.team1Stats.value!, controllerState.team2Stats.value!, theme, selectedLeague),
+                ),
+                if (controllerState.comparisonResult.hasValue && controllerState.comparisonResult.value != null) ...[
+                  _GradientBorderCard(
+                     context: context,
+                     child: _buildComparisonResultCard(controllerState.comparisonResult.value!, controllerState.team1Stats.value!, controllerState.team2Stats.value!, theme),
+                  )
+                ]
+              ],
+            ),
+          )
+        else
+          const Padding(
+            padding: EdgeInsets.only(top: 32.0, bottom: 32.0),
+            child: Center(child: Text('Karşılaştırma sonuçları burada görünecek.\nLig ve takımları seçip karşılaştırın.', textAlign: TextAlign.center, style: TextStyle(color: Colors.grey))),
+          ),
+      ],
     );
   }
 }

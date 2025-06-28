@@ -1,9 +1,11 @@
 // lib/features/advanced_comparison/advanced_comparison_controller.dart
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:futbol_analiz_app/features/single_team_analysis/single_team_controller.dart';
+import 'package:http/http.dart' as http;
 import '../../data_service.dart';
 import '../../services/team_name_service.dart';
-import '../single_team_analysis/single_team_controller.dart'; 
 
 class TeamComparisonData {
   final List<String> availableTeams;
@@ -45,6 +47,8 @@ class AdvancedComparisonState {
 
   final List<Map<String, dynamic>> h2hMatches;
   final Map<String, int> h2hStats;
+  
+  final AsyncValue<String> aiCommentary;
 
   const AdvancedComparisonState({
     this.selectedLeague1, this.selectedSeason1, this.selectedTeam1,
@@ -56,6 +60,7 @@ class AdvancedComparisonState {
     this.isLoading = false,
     this.h2hMatches = const [],
     this.h2hStats = const {},
+    this.aiCommentary = const AsyncValue.data(''),
   });
 
   AdvancedComparisonState copyWith({
@@ -71,6 +76,7 @@ class AdvancedComparisonState {
     bool clearError = false,
     List<Map<String, dynamic>>? h2hMatches,
     Map<String, int>? h2hStats,
+    AsyncValue<String>? aiCommentary,
   }) {
     return AdvancedComparisonState(
       selectedLeague1: league1ToNull ? null : selectedLeague1 ?? this.selectedLeague1,
@@ -86,6 +92,7 @@ class AdvancedComparisonState {
       isLoading: isLoading ?? this.isLoading,
       h2hMatches: h2hMatches ?? this.h2hMatches,
       h2hStats: h2hStats ?? this.h2hStats,
+      aiCommentary: aiCommentary ?? this.aiCommentary,
     );
   }
 }
@@ -94,6 +101,10 @@ class AdvancedComparisonController extends StateNotifier<AdvancedComparisonState
   AdvancedComparisonController(this._dataService) : super(const AdvancedComparisonState());
 
   final DataService _dataService;
+  
+  static const String _geminiApiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=';
+  // DEĞİŞİKLİK: Kullanıcı tarafından sağlanan API anahtarı eklendi.
+  static const String _apiKey = "AIzaSyBKRuCBnHwZW6Qd4bFnz7ClmrCokb0LKFk"; 
 
   void _clearH2HData() {
     if (state.h2hMatches.isNotEmpty || state.h2hStats.isNotEmpty) {
@@ -129,7 +140,11 @@ class AdvancedComparisonController extends StateNotifier<AdvancedComparisonState
   }
 
   void clearComparison() {
-    state = state.copyWith(comparisonResult: const AsyncValue.data(null), clearError: true);
+    state = state.copyWith(
+      comparisonResult: const AsyncValue.data(null), 
+      aiCommentary: const AsyncValue.data(''),
+      clearError: true
+    );
     _clearH2HData();
   }
   
@@ -160,65 +175,67 @@ class AdvancedComparisonController extends StateNotifier<AdvancedComparisonState
       return;
     }
     
-    state = state.copyWith(isLoading: true, clearError: true, comparisonResult: const AsyncValue.data(null));
+    state = state.copyWith(
+      isLoading: true, 
+      clearError: true, 
+      comparisonResult: const AsyncValue.data(null),
+      aiCommentary: const AsyncValue.loading()
+    );
     _clearH2HData();
 
     try {
       final stats1Future = _fetchSingleTeamStats(league: state.selectedLeague1!, season: state.selectedSeason1!, teamName: state.selectedTeam1!, matchCount: matchCount);
       final stats2Future = _fetchSingleTeamStats(league: state.selectedLeague2!, season: state.selectedSeason2!, teamName: state.selectedTeam2!, matchCount: matchCount);
       
-      // --- DÜZELTİLMİŞ H2H VERİ ÇEKME VE BİRLEŞTİRME MANTIĞI ---
-      List<List<dynamic>> combinedCsvData = [];
-      List<String> combinedHeaders = [];
-      
-      // Benzersiz lig URL'lerini bir Set'te topla
       final Set<String> uniqueUrls = {
         DataService.getLeagueUrl(state.selectedLeague1!, state.selectedSeason1!)!,
         DataService.getLeagueUrl(state.selectedLeague2!, state.selectedSeason2!)!,
       };
 
-      // Tüm liglerin verilerini asenkron olarak çek
       final csvFutures = uniqueUrls.map((url) => _dataService.fetchData(url)).toList();
       final csvResults = await Future.wait(csvFutures);
-
+      
+      List<List<dynamic>> combinedCsvData = [];
+      List<String> combinedHeaders = [];
       for (final csvString in csvResults) {
         if (csvString != null) {
           final parsed = _dataService.parseCsv(csvString);
           if (parsed.length > 1) {
-            // İlk geçerli CSV'den başlıkları al
-            if (combinedHeaders.isEmpty) {
-              combinedHeaders = _dataService.getCsvHeaders(parsed);
-            }
-            // Başlık satırı hariç veriyi ekle
+            if (combinedHeaders.isEmpty) { combinedHeaders = _dataService.getCsvHeaders(parsed); }
             combinedCsvData.addAll(parsed.sublist(1));
           }
         }
       }
-      
-      // Başlıkları bir kez ekleyerek tam bir CSV listesi oluştur
-      if (combinedHeaders.isNotEmpty) {
-          combinedCsvData.insert(0, combinedHeaders);
-      }
+      if (combinedHeaders.isNotEmpty) { combinedCsvData.insert(0, combinedHeaders); }
 
       final h2hMatches = _dataService.getH2HMatches(combinedCsvData, combinedHeaders, state.selectedTeam1!, state.selectedTeam2!);
       final h2hStats = _calculateH2HStats(h2hMatches, state.selectedTeam1!);
-      // -------------------------------------------------------------
-
+      
       final results = await Future.wait([stats1Future, stats2Future]);
       final stats1 = results[0]..['leagueNameForLogo'] = state.selectedLeague1!;
       final stats2 = results[1]..['leagueNameForLogo'] = state.selectedLeague2!;
-      final comparison = _calculateComparison(stats1, stats2);
+      
+      final aiCommentaryFuture = _generateAiCommentary(stats1, stats2, h2hStats);
+
+      final aiResult = await aiCommentaryFuture;
 
       state = state.copyWith(
         team1Data: state.team1Data.copyWith(stats: AsyncValue.data(stats1)),
         team2Data: state.team2Data.copyWith(stats: AsyncValue.data(stats2)),
-        comparisonResult: AsyncValue.data(comparison),
+        comparisonResult: AsyncValue.data(_calculateComparison(stats1, stats2)),
         h2hMatches: h2hMatches,
         h2hStats: h2hStats,
+        aiCommentary: AsyncValue.data(aiResult),
         isLoading: false
       );
     } catch (e, st) {
-      state = state.copyWith(errorMessage: e.toString(), isLoading: false, team1Data: state.team1Data.copyWith(stats: AsyncValue.error(e, st)), team2Data: state.team2Data.copyWith(stats: AsyncValue.error(e,st)));
+      state = state.copyWith(
+        errorMessage: e.toString(), 
+        isLoading: false, 
+        team1Data: state.team1Data.copyWith(stats: AsyncValue.error(e, st)), 
+        team2Data: state.team2Data.copyWith(stats: AsyncValue.error(e,st)),
+        aiCommentary: AsyncValue.error(e, st)
+      );
     }
   }
 
@@ -323,6 +340,108 @@ class AdvancedComparisonController extends StateNotifier<AdvancedComparisonState
       state = state.copyWith(team1Data: update(state.team1Data));
     } else {
       state = state.copyWith(team2Data: update(state.team2Data));
+    }
+  }
+
+  Future<String> _generateAiCommentary(Map<String, dynamic> stats1, Map<String, dynamic> stats2, Map<String, int> h2hStats) async {
+    if (_apiKey == "YOUR_API_KEY_HERE" || _apiKey.isEmpty) {
+      return "## API Anahtarı Eksik\nLütfen AI analiz özelliğini kullanmak için bir API anahtarı sağlayın.";
+    }
+
+    final String team1Name = stats1['displayTeamName'] ?? 'Takım 1';
+    final String team2Name = stats2['displayTeamName'] ?? 'Takım 2';
+    final int matchCount1 = stats1['oynananMacSayisi'];
+    final int matchCount2 = stats2['oynananMacSayisi'];
+
+    final int team1H2HWins = h2hStats['team1Wins'] ?? 0;
+    final int team2H2HWins = h2hStats['team2Wins'] ?? 0;
+    final int h2hDraws = h2hStats['draws'] ?? 0;
+    final int totalH2HMatches = team1H2HWins + team2H2HWins + h2hDraws;
+
+
+    String prompt = """
+    Sen profesyonel bir futbol analistisin. Birazdan sana vereceğim istatistiklere dayanarak, yaklaşan $team1Name - $team2Name maçı için detaylı ve tarafsız bir analiz yap. Yorumlarını Markdown formatında, başlıklar ve listeler kullanarak structure et. Cevabının sonunda, bunun sadece istatistiksel bir yorum olduğunu ve bir yatırım tavsiyesi olmadığını belirten kısa bir not ekle.
+
+    Analizini şu başlıklar altında topla:
+    1.  **Genel Form ve Momentum:** Takımların son maçlardaki galibiyet/mağlubiyet serilerini ve form puanlarını karşılaştır.
+    2.  **Hücum Gücü:** Hangi takımın hücum hattı daha etkili? Attıkları goller, maç başına gol ortalamaları, şut ve isabetli şut sayılarını karşılaştırarak yorumla.
+    3.  **Savunma Performansı:** Hangi takım savunmada daha sağlam? Yedikleri goller, maç başına yedikleri gol ortalamaları ve clean sheet (gol yememe) yüzdelerini değerlendir.
+    4.  **Aralarındaki Maçlar (H2H):** Geçmiş maç verileri bir takım için psikolojik bir üstünlük sağlıyor mu?
+    5.  **Oyun Tarzı İpuçları:** Korner, faul ve kart istatistikleri maçın gidişatı hakkında ne gibi ipuçları veriyor? (Örn: "A Takımının yüksek faul ortalaması, maçın sık sık durabileceğini ve duran top tehlikeleri yaratabileceğini gösteriyor.")
+    6.  **Maç Özeti ve Tahmin:** Tüm bu verilere dayanarak, maçın genel gidişatı hakkında (örn: gollü, temposu düşük, taktiksel bir mücadele vb.) bir özet sun.
+
+    İşte veriler:
+
+    **$team1Name İstatistikleri (Son $matchCount1 Maç):**
+    - Galibiyet/Beraberlik/Mağlubiyet: ${stats1['galibiyet']}/${stats1['beraberlik']}/${stats1['maglubiyet']}
+    - Atılan Gol: ${stats1['attigi']} (Ort: ${stats1['macBasiOrtalamaGol']})
+    - Yenilen Gol: ${stats1['yedigi']} (Ort: ${((stats1['yedigi'] as num)/matchCount1).toStringAsFixed(2)})
+    - KG Var Yüzdesi: %${stats1['kgVarYuzdesi']}
+    - Clean Sheet Yüzdesi: %${stats1['cleanSheetYuzdesi']}
+    - Ortalama Şut/İsabetli Şut: ${stats1['ortalamaSut']}/${stats1['ortalamaIsabetliSut']}
+    - Ortalama Korner: ${stats1['ortalamaKorner']}
+    - Ortalama Faul/Sarı Kart: ${stats1['ortalamaFaul']}/${stats1['ortalamaSariKart']}
+    
+    **$team2Name İstatistikleri (Son $matchCount2 Maç):**
+    - Galibiyet/Beraberlik/Mağlubiyet: ${stats2['galibiyet']}/${stats2['beraberlik']}/${stats2['maglubiyet']}
+    - Atılan Gol: ${stats2['attigi']} (Ort: ${stats2['macBasiOrtalamaGol']})
+    - Yenilen Gol: ${stats2['yedigi']} (Ort: ${((stats2['yedigi'] as num)/matchCount2).toStringAsFixed(2)})
+    - KG Var Yüzdesi: %${stats2['kgVarYuzdesi']}
+    - Clean Sheet Yüzdesi: %${stats2['cleanSheetYuzdesi']}
+    - Ortalama Şut/İsabetli Şut: ${stats2['ortalamaSut']}/${stats2['ortalamaIsabetliSut']}
+    - Ortalama Korner: ${stats2['ortalamaKorner']}
+    - Ortalama Faul/Sarı Kart: ${stats2['ortalamaFaul']}/${stats2['ortalamaSariKart']}
+
+    **Aralarındaki Maçlar (H2H):**
+    - Toplam Maç: $totalH2HMatches
+    - $team1Name Galibiyeti: $team1H2HWins
+    - $team2Name Galibiyeti: $team2H2HWins
+    - Beraberlik: $h2hDraws
+    """;
+    
+    try {
+      final response = await http.post(
+        Uri.parse('$_geminiApiUrl$_apiKey'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'contents': [{'parts': [{'text': prompt}]}],
+          'safetySettings': [
+            {
+              'category': 'HARM_CATEGORY_HARASSMENT',
+              'threshold': 'BLOCK_NONE',
+            },
+            {
+              'category': 'HARM_CATEGORY_HATE_SPEECH',
+              'threshold': 'BLOCK_NONE',
+            },
+            {
+              'category': 'HARM_CATEGORY_SEXUALLY_EXPLICIT',
+              'threshold': 'BLOCK_NONE',
+            },
+            {
+              'category': 'HARM_CATEGORY_DANGEROUS_CONTENT',
+              'threshold': 'BLOCK_NONE',
+            },
+          ]
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final body = json.decode(response.body);
+        if (body['candidates'] != null && 
+            (body['candidates'] as List).isNotEmpty && 
+            body['candidates'][0]['content'] != null &&
+            body['candidates'][0]['content']['parts'] != null &&
+            (body['candidates'][0]['content']['parts'] as List).isNotEmpty) {
+              return body['candidates'][0]['content']['parts'][0]['text'];
+        } else {
+          return "Yapay zeka bir yanıt üretemedi. Bunun nedeni API güvenlik ayarları veya geçici bir sorun olabilir. Lütfen daha sonra tekrar deneyin.";
+        }
+      } else {
+        throw Exception('API isteği başarısız oldu: ${response.body}');
+      }
+    } catch (e) {
+      throw Exception('Yapay zeka analizi alınırken hata oluştu: $e');
     }
   }
 }

@@ -5,7 +5,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../data_service.dart';
 import '../widgets/last_matches_tab.dart';
 import '../widgets/standings_tab.dart';
-import '../matches_screen.dart';
 import '../widgets/modern_header_widget.dart';
 
 class HomeFeedScreen extends ConsumerStatefulWidget {
@@ -37,7 +36,8 @@ class _HomeFeedScreenState extends ConsumerState<HomeFeedScreen> with TickerProv
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this, initialIndex: 0);
+    // DEĞİŞİKLİK: Sekme sayısı 2'ye düşürüldü
+    _tabController = TabController(length: 2, vsync: this, initialIndex: 0);
     _loadLastFilter();
   }
   
@@ -164,26 +164,21 @@ class _HomeFeedScreenState extends ConsumerState<HomeFeedScreen> with TickerProv
                   indicatorColor: theme.colorScheme.primary,
                   labelColor: theme.colorScheme.primary,
                   unselectedLabelColor: theme.colorScheme.onSurfaceVariant.withOpacity(0.8),
+                  // DEĞİŞİKLİK: Sekme listesi güncellendi
                   tabs: const [
                     Tab(text: "Son Maçlar"),
-                    Tab(text: "Maç Merkezi"),
                     Tab(text: "Puan Durumu"),
                   ],
                 ),
               ),
             ),
-            // DEĞİŞİKLİK: Filtreleme çubuğu buraya taşındı ve Sliver'a çevrildi.
+            // DEĞİŞİKLİK: Filtreleme çubuğu koşulsuz olarak gösteriliyor
             SliverToBoxAdapter(
-              child: AnimatedBuilder(
-                animation: _tabController,
-                builder: (context, child) {
-                  // Sadece 0. ve 2. sekmelerde göster
-                  return _tabController.index != 1 ? _buildLeagueFilterBar() : const SizedBox.shrink();
-                }
-              ),
+              child: _buildLeagueFilterBar(),
             ),
           ];
         },
+        // DEĞİŞİKLİK: TabBarView içeriği güncellendi
         body: TabBarView(
           controller: _tabController,
           children: [
@@ -192,7 +187,6 @@ class _HomeFeedScreenState extends ConsumerState<HomeFeedScreen> with TickerProv
               favoriteLeagues: leaguesToShow,
               currentSeasonApiValue: widget.currentSeasonApiValue,
             ),
-            const MatchesScreen(),
             StandingsTab(
               key: ValueKey('standings_${widget.currentSeasonApiValue}_${leaguesToShow.join('_')}'),
               favoriteLeagues: leaguesToShow,
@@ -218,7 +212,6 @@ class _SliverAppBarDelegate extends SliverPersistentHeaderDelegate {
   @override
   Widget build(
       BuildContext context, double shrinkOffset, bool overlapsContent) {
-    // DEĞİŞİKLİK: Arka plan rengi ayarlandı
     return Container(
       color: Theme.of(context).scaffoldBackgroundColor,
       child: _tabBar,

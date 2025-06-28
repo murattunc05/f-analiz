@@ -2,20 +2,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../data_service.dart';
-import '../widgets/league_selection_dialog_content.dart';
-import '../widgets/team_selection_dialog_content.dart';
-import '../main.dart';
-import '../utils.dart';
-import '../utils/dialog_utils.dart';
+import 'package:futbol_analiz_app/data_service.dart';
+import 'package:futbol_analiz_app/widgets/league_selection_dialog_content.dart';
+import 'package:futbol_analiz_app/widgets/team_selection_dialog_content.dart';
+import 'package:futbol_analiz_app/main.dart';
+import 'package:futbol_analiz_app/utils.dart';
+import 'package:futbol_analiz_app/utils/dialog_utils.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import '../services/logo_service.dart';
-import '../widgets/team_setup_card_widget.dart';
-import '../features/single_team_analysis/single_team_controller.dart';
-import '../services/team_name_service.dart';
-import '../widgets/modern_header_widget.dart';
+import 'package:futbol_analiz_app/services/logo_service.dart';
+import 'package:futbol_analiz_app/widgets/team_setup_card_widget.dart';
+import 'package:futbol_analiz_app/features/single_team_analysis/single_team_controller.dart';
+import 'package:futbol_analiz_app/services/team_name_service.dart';
 
 class SingleTeamScreen extends ConsumerWidget {
   final StatsDisplaySettings statsSettings;
@@ -33,7 +32,6 @@ class SingleTeamScreen extends ConsumerWidget {
     required this.onSearchTap,
   });
   
-  // Bu ekrana özel gradyan renkleri
   static const List<Color> _cardGradient = [Color(0xffec4899), Color(0xff7e22ce), Color(0xff2563eb)];
 
   Future<void> _selectLeague(BuildContext context, WidgetRef ref) async {
@@ -81,7 +79,6 @@ class SingleTeamScreen extends ConsumerWidget {
     }
   }
 
-  // YENİ WIDGET: Gradyan çerçeveli kart
   Widget _GradientBorderCard({required Widget child, required BuildContext context}) {
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 8.0),
@@ -107,7 +104,6 @@ class SingleTeamScreen extends ConsumerWidget {
     );
   }
 
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
@@ -117,104 +113,97 @@ class SingleTeamScreen extends ConsumerWidget {
     final selectedLeague = controllerState.selectedLeague;
     final selectedTeam = controllerState.selectedTeam;
 
-    return Scaffold(
-      body: SafeArea(
-        bottom: false,
-        child: ListView(
-          controller: scrollController,
-          padding: EdgeInsets.zero,
-          children: [
-            ModernHeaderWidget(
-              onSettingsTap: () => scaffoldKey.currentState?.openDrawer(),
-              onSearchTap: onSearchTap,
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 8.0),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                   _GradientBorderCard( // DEĞİŞİKLİK
-                    context: context,
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: TeamSetupCardWidget(
-                        theme: theme,
-                        cardTitle: "Tek Takım Analizi",
-                        selectedLeague: selectedLeague,
-                        currentTeamName: selectedTeam ?? '',
-                        selectedSeasonApiVal: currentSeasonApiValue,
-                        globalCurrentSeasonApiValue: currentSeasonApiValue,
-                        onLeagueSelectTap: () => _selectLeague(context, ref),
-                        onTeamSelectTap: () => _selectTeam(context, ref),
-                      ),
-                    ),
+    // DEĞİŞİKLİK: Scaffold ve SafeArea kaldırıldı, doğrudan ListView döndürülüyor
+    return ListView(
+      controller: scrollController,
+      padding: EdgeInsets.zero,
+      children: [
+        // DEĞİŞİKLİK: ModernHeaderWidget kaldırıldı
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 8.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+               _GradientBorderCard(
+                context: context,
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: TeamSetupCardWidget(
+                    theme: theme,
+                    cardTitle: "Tek Takım Analizi",
+                    selectedLeague: selectedLeague,
+                    currentTeamName: selectedTeam ?? '',
+                    selectedSeasonApiVal: currentSeasonApiValue,
+                    globalCurrentSeasonApiValue: currentSeasonApiValue,
+                    onLeagueSelectTap: () => _selectLeague(context, ref),
+                    onTeamSelectTap: () => _selectTeam(context, ref),
                   ),
-                  const SizedBox(height: 12.0),
-                  ElevatedButton.icon(
-                    icon: teamStatsAsyncValue.isLoading 
-                        ? SpinKitThreeBounce(color: theme.colorScheme.onPrimary, size: 18.0) 
-                        : const Icon(Icons.analytics_outlined, size: 20),
-                    label: teamStatsAsyncValue.isLoading ? const SizedBox.shrink() : const Text('İstatistikleri Getir'),
-                    onPressed: (selectedLeague == null || teamStatsAsyncValue.isLoading || selectedTeam == null) 
-                        ? null 
-                        : () {
-                            HapticFeedback.mediumImpact(); 
-                            ref.read(singleTeamControllerProvider.notifier).fetchTeamStats(currentSeasonApiValue);
-                          },
-                     style: ElevatedButton.styleFrom(
-                       padding: teamStatsAsyncValue.isLoading ? const EdgeInsets.symmetric(horizontal: 24.0, vertical: 12.0) : null, 
-                       minimumSize: teamStatsAsyncValue.isLoading ? const Size(64, 48) : null
-                     ),
-                  )
-                ]
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16,0,16,16),
-              child: teamStatsAsyncValue.when(
-                data: (stats) {
-                  if (stats == null || stats.isEmpty || stats['oynananMacSayisi'] == 0) {
-                    if (selectedLeague == null || selectedTeam == null) {
-                      return const Padding(
-                        padding: EdgeInsets.only(top:32.0),
-                        child: Center(child: Text('İstatistikler burada görünecek.\nLig ve takım seçimi yapın.', textAlign: TextAlign.center, style: TextStyle(color: Colors.grey))),
-                      );
-                    }
-                    return const SizedBox.shrink();
-                  }
-                  
-                  return InkWell(
-                    onTap: () => _showTeamGraphsDialog(context, stats, selectedLeague),
-                    child: _GradientBorderCard( // DEĞİŞİKLİK
-                      context: context,
-                      child: Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: _buildTeamStatsCardContent(stats, theme, selectedLeague)
-                      )
-                    ),
-                  );
-                },
-                loading: () => const Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(32.0),
-                    child: SpinKitPouringHourGlassRefined(color: Colors.deepOrange, size: 50.0)
-                  )
                 ),
-                error: (error, stackTrace) => Center(
+              ),
+              const SizedBox(height: 12.0),
+              ElevatedButton.icon(
+                icon: teamStatsAsyncValue.isLoading 
+                    ? SpinKitThreeBounce(color: theme.colorScheme.onPrimary, size: 18.0) 
+                    : const Icon(Icons.analytics_outlined, size: 20),
+                label: teamStatsAsyncValue.isLoading ? const SizedBox.shrink() : const Text('İstatistikleri Getir'),
+                onPressed: (selectedLeague == null || teamStatsAsyncValue.isLoading || selectedTeam == null) 
+                    ? null 
+                    : () {
+                        HapticFeedback.mediumImpact(); 
+                        ref.read(singleTeamControllerProvider.notifier).fetchTeamStats(currentSeasonApiValue);
+                      },
+                 style: ElevatedButton.styleFrom(
+                   padding: teamStatsAsyncValue.isLoading ? const EdgeInsets.symmetric(horizontal: 24.0, vertical: 12.0) : null, 
+                   minimumSize: teamStatsAsyncValue.isLoading ? const Size(64, 48) : null
+                 ),
+              )
+            ]
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16,0,16,16),
+          child: teamStatsAsyncValue.when(
+            data: (stats) {
+              if (stats == null || stats.isEmpty || stats['oynananMacSayisi'] == 0) {
+                if (selectedLeague == null || selectedTeam == null) {
+                  return const Padding(
+                    padding: EdgeInsets.only(top:32.0),
+                    child: Center(child: Text('İstatistikler burada görünecek.\nLig ve takım seçimi yapın.', textAlign: TextAlign.center, style: TextStyle(color: Colors.grey))),
+                  );
+                }
+                return const SizedBox.shrink();
+              }
+              
+              return InkWell(
+                onTap: () => _showTeamGraphsDialog(context, stats, selectedLeague),
+                child: _GradientBorderCard(
+                  context: context,
                   child: Padding(
                     padding: const EdgeInsets.all(16.0),
-                    child: Text(
-                      error.toString(),
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: theme.colorScheme.error, fontSize: 16.0),
-                    )
+                    child: _buildTeamStatsCardContent(stats, theme, selectedLeague)
                   )
                 ),
+              );
+            },
+            loading: () => const Center(
+              child: Padding(
+                padding: EdgeInsets.all(32.0),
+                child: SpinKitPouringHourGlassRefined(color: Colors.deepOrange, size: 50.0)
               )
-            )
-          ],
-        ),
-      ),
+            ),
+            error: (error, stackTrace) => Center(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Text(
+                  error.toString(),
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: theme.colorScheme.error, fontSize: 16.0),
+                )
+              )
+            ),
+          )
+        )
+      ],
     );
   }
 
@@ -329,7 +318,6 @@ class SingleTeamScreen extends ConsumerWidget {
     );
   }
 
-  // DEĞİŞİKLİK: Bu metot artık en dıştaki Card'ı döndürmüyor.
   Widget _buildTeamStatsCardContent(Map<String, dynamic> stats, ThemeData theme, String? selectedLeague) {
     if (!statsSettings.showOverallLast5Stats) return const SizedBox.shrink();
 

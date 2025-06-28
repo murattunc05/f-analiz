@@ -2,21 +2,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'data_service.dart';
-import 'widgets/league_selection_dialog_content.dart';
-import 'widgets/team_selection_dialog_content.dart';
-import 'main.dart';
-import 'utils/dialog_utils.dart';
+import 'package:futbol_analiz_app/data_service.dart';
+import 'package:futbol_analiz_app/widgets/league_selection_dialog_content.dart';
+import 'package:futbol_analiz_app/widgets/team_selection_dialog_content.dart';
+import 'package:futbol_analiz_app/main.dart';
+import 'package:futbol_analiz_app/utils/dialog_utils.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
-import 'widgets/team_setup_card_widget.dart';
-import 'widgets/comparison_stats_card_widget.dart';
-import 'widgets/comparison_result_card_widget.dart';
-import 'widgets/detailed_match_list_content.dart';
-import 'widgets/full_comparison_expectations_content.dart';
-import 'features/advanced_comparison/advanced_comparison_controller.dart';
-import 'widgets/h2h_summary_card.dart';
-import 'widgets/h2h_popup_content.dart';
-import 'widgets/modern_header_widget.dart';
+import 'package:futbol_analiz_app/widgets/team_setup_card_widget.dart';
+import 'package:futbol_analiz_app/widgets/comparison_stats_card_widget.dart';
+import 'package:futbol_analiz_app/widgets/detailed_match_list_content.dart';
+import 'package:futbol_analiz_app/features/advanced_comparison/advanced_comparison_controller.dart';
+import 'package:futbol_analiz_app/widgets/h2h_summary_card.dart';
+import 'package:futbol_analiz_app/widgets/h2h_popup_content.dart';
+import 'package:futbol_analiz_app/widgets/ai_analysis_card.dart';
 
 class AdvancedComparisonScreen extends ConsumerWidget {
   final StatsDisplaySettings statsSettings;
@@ -36,12 +34,11 @@ class AdvancedComparisonScreen extends ConsumerWidget {
 
   final TextEditingController _matchCountController = TextEditingController(text: '5');
   
-  // Bu ekrana özel gradyan renkleri
   static const List<Color> _setupCardGradient = [Color(0xffa3e635), Color(0xff4d7c0f), Color(0xff166534)];
   static const List<Color> _resultCardGradient = [Color(0xfff59e0b), Color(0xffef4444), Color(0xff8b5cf6)];
+  static const List<Color> _aiCardGradient = [Color(0xff4A80FF), Color(0xff77536F), Color(0xFF46263F)];
 
 
-  // YENİ WIDGET: Gradyan çerçeveli kart
   Widget _GradientBorderCard({required Widget child, required BuildContext context, required List<Color> gradientColors}) {
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 8.0),
@@ -171,7 +168,7 @@ class AdvancedComparisonScreen extends ConsumerWidget {
       maxHeightFactor: 0.8
     );
   }
-
+  
   void _showDetailedMatchListPopup(BuildContext context, List<Map<String, dynamic>> matches, String teamDisplayName) {
     ThemeData theme = Theme.of(context);
     String popupTitleText = matches.isNotEmpty ? '$teamDisplayName - Son ${matches.length} Maç' : '$teamDisplayName - Maç Detayı Yok';
@@ -187,28 +184,12 @@ class AdvancedComparisonScreen extends ConsumerWidget {
     );
   }
   
-  void _showFullComparisonDialog(BuildContext context, Map<String, dynamic> team1Stats, Map<String, dynamic> team2Stats, Map<String, dynamic> comparisonResult) {
-    ThemeData theme = Theme.of(context);
-    showAnimatedDialog(
-        context: context,
-        titleWidget: Text('Detaylı Maç Beklentileri', style: theme.textTheme.titleLarge?.copyWith(color: theme.colorScheme.primary), textAlign: TextAlign.center),
-        dialogPadding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
-        contentWidget: FullComparisonExpectationsContent( 
-            theme: theme, team1Stats: team1Stats, team2Stats: team2Stats,
-            comparisonResult: comparisonResult, statsSettings: statsSettings,
-        ),
-        actionsWidget: [TextButton(child: const Text('Kapat'), onPressed: () => Navigator.of(context).pop())],
-        maxHeightFactor: 0.8,
-    );
-  }
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final controllerState = ref.watch(advancedComparisonControllerProvider);
     final team1Stats = controllerState.team1Data.stats;
     final team2Stats = controllerState.team2Data.stats;
-    final comparisonResult = controllerState.comparisonResult;
     final canCompare = controllerState.selectedLeague1 != null && controllerState.selectedTeam1 != null &&
                         controllerState.selectedLeague2 != null && controllerState.selectedTeam2 != null &&
                         !controllerState.isLoading;
@@ -222,173 +203,145 @@ class AdvancedComparisonScreen extends ConsumerWidget {
       }
     });
 
-    return Scaffold(
-      body: SafeArea(
-        bottom: false,
-        child: ListView(
-          controller: scrollController,
-          padding: EdgeInsets.zero,
-          children: [
-            ModernHeaderWidget(
-              onSettingsTap: () => scaffoldKey.currentState?.openDrawer(),
-              onSearchTap: onSearchTap,
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 8.0),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _GradientBorderCard( // DEĞİŞİKLİK
-                    context: context,
-                    gradientColors: _setupCardGradient,
-                    child: TeamSetupCardWidget(
-                      theme: theme, cardTitle: '1. Takım Ayarları',
-                      selectedLeague: controllerState.selectedLeague1,
-                      selectedSeasonApiVal: controllerState.selectedSeason1,
-                      currentTeamName: controllerState.selectedTeam1 ?? '',
-                      globalCurrentSeasonApiValue: currentSeasonApiValue,
-                      onLeagueSelectTap: () => _selectLeagueForTeam(context, ref, 1),
-                      onTeamSelectTap: () => _selectTeam(context, ref, 1),
-                      onSeasonIconTap: () => _showSeasonSelectionDialogForTeam(context, ref, 1),
-                    ),
-                  ),
-                  _GradientBorderCard( // DEĞİŞİKLİK
-                    context: context,
-                    gradientColors: _setupCardGradient,
-                    child: TeamSetupCardWidget(
-                      theme: theme, cardTitle: '2. Takım Ayarları',
-                      selectedLeague: controllerState.selectedLeague2,
-                      selectedSeasonApiVal: controllerState.selectedSeason2,
-                      currentTeamName: controllerState.selectedTeam2 ?? '',
-                      globalCurrentSeasonApiValue: currentSeasonApiValue,
-                      onLeagueSelectTap: () => _selectLeagueForTeam(context, ref, 2),
-                      onTeamSelectTap: () => _selectTeam(context, ref, 2),
-                      onSeasonIconTap: () => _showSeasonSelectionDialogForTeam(context, ref, 2),
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 12.0),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            controller: _matchCountController,
-                            decoration: const InputDecoration(
-                              labelText: 'Maç Sayısı',
-                              prefixIcon: Icon(Icons.format_list_numbered),
-                              hintText: 'Örn: 7',
-                              counterText: '',
-                              contentPadding: EdgeInsets.symmetric(vertical: 12.0, horizontal: 10.0),
-                            ),
-                            keyboardType: TextInputType.number,
-                            inputFormatters: <TextInputFormatter>[FilteringTextInputFormatter.digitsOnly],
-                            maxLength: 2,
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        ElevatedButton.icon(
-                          style: ElevatedButton.styleFrom(
-                            padding: controllerState.isLoading
-                                ? const EdgeInsets.symmetric(horizontal: 16, vertical: 10)
-                                : const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                            minimumSize: const Size(64, 48),
-                          ),
-                          icon: controllerState.isLoading
-                              ? SpinKitThreeBounce(color: theme.colorScheme.onPrimary, size: 18.0)
-                              : const Icon(Icons.insights, size: 20),
-                          label: Text(controllerState.isLoading ? 'Analiz Ediliyor...' : 'Karşılaştır'),
-                          onPressed: !canCompare
-                              ? null
-                              : () {
-                                  FocusScope.of(context).unfocus();
-                                  HapticFeedback.mediumImpact();
-                                  ref.read(advancedComparisonControllerProvider.notifier).performAdvancedComparison(
-                                        matchCount: int.tryParse(_matchCountController.text) ?? 5
-                                      );
-                                },
-                        )
-                      ],
-                    ),
-                  ),
-                ],
+    // DEĞİŞİKLİK: AI Kartının ne zaman görüneceğini belirleyen mantık
+    final showAiCard = controllerState.isLoading || (controllerState.aiCommentary.hasValue && controllerState.aiCommentary.asData!.value.isNotEmpty);
+
+    return ListView(
+      controller: scrollController,
+      padding: EdgeInsets.zero,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 8.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _GradientBorderCard(
+                context: context,
+                gradientColors: _setupCardGradient,
+                child: TeamSetupCardWidget(
+                  theme: theme, cardTitle: '1. Takım Ayarları',
+                  selectedLeague: controllerState.selectedLeague1,
+                  selectedSeasonApiVal: controllerState.selectedSeason1,
+                  currentTeamName: controllerState.selectedTeam1 ?? '',
+                  globalCurrentSeasonApiValue: currentSeasonApiValue,
+                  onLeagueSelectTap: () => _selectLeagueForTeam(context, ref, 1),
+                  onTeamSelectTap: () => _selectTeam(context, ref, 1),
+                  onSeasonIconTap: () => _showSeasonSelectionDialogForTeam(context, ref, 1),
+                ),
               ),
-            ),
-            
-            if (controllerState.isLoading)
-              const Center(child: Padding(padding: EdgeInsets.all(32.0), child: SpinKitPouringHourGlassRefined(color: Colors.deepOrange, size: 50.0)))
-            else if (controllerState.errorMessage != null)
-              Center(child: Padding(padding: const EdgeInsets.all(16.0), child: Text(controllerState.errorMessage!, textAlign: TextAlign.center, style: TextStyle(color: theme.colorScheme.error, fontSize: 16.0))))
-            
-            else if (team1Stats.hasValue && team2Stats.hasValue && team1Stats.value != null && team2Stats.value != null)
+              _GradientBorderCard(
+                context: context,
+                gradientColors: _setupCardGradient,
+                child: TeamSetupCardWidget(
+                  theme: theme, cardTitle: '2. Takım Ayarları',
+                  selectedLeague: controllerState.selectedLeague2,
+                  selectedSeasonApiVal: controllerState.selectedSeason2,
+                  currentTeamName: controllerState.selectedTeam2 ?? '',
+                  globalCurrentSeasonApiValue: currentSeasonApiValue,
+                  onLeagueSelectTap: () => _selectLeagueForTeam(context, ref, 2),
+                  onTeamSelectTap: () => _selectTeam(context, ref, 2),
+                  onSeasonIconTap: () => _showSeasonSelectionDialogForTeam(context, ref, 2),
+                ),
+              ),
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                child: Column(
+                padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 12.0),
+                child: Row(
                   children: [
-                    if (comparisonResult.hasValue && comparisonResult.value != null) ...[
-                      _GradientBorderCard( // DEĞİŞİKLİK
-                        context: context,
-                        gradientColors: _resultCardGradient,
-                        child: ComparisonResultCardWidget(
-                          theme: theme,
-                          comparisonResult: comparisonResult.value!,
-                          team1Stats: team1Stats.value,
-                          team2Stats: team2Stats.value,
-                          statsSettings: statsSettings,
-                          numberOfMatchesToCompare: int.tryParse(_matchCountController.text) ?? 5,
-                          onFullComparisonTap: () => _showFullComparisonDialog(context, team1Stats.value!, team2Stats.value!, comparisonResult.value!),
+                    Expanded(
+                      child: TextField(
+                        controller: _matchCountController,
+                        decoration: const InputDecoration(
+                          labelText: 'Maç Sayısı',
+                          prefixIcon: Icon(Icons.format_list_numbered),
+                          hintText: 'Örn: 7',
+                          counterText: '',
+                          contentPadding: EdgeInsets.symmetric(vertical: 12.0, horizontal: 10.0),
                         ),
-                      ),
-                    ],
-                    if (controllerState.h2hStats.isNotEmpty)
-                      _GradientBorderCard( // DEĞİŞİKLİK
-                        context: context,
-                        gradientColors: _resultCardGradient.reversed.toList(),
-                        child: H2HSummaryCard(
-                           theme: theme, 
-                           h2hStats: controllerState.h2hStats,
-                           team1Data: team1Stats.value!,
-                           team2Data: team2Stats.value!,
-                           lastMatch: controllerState.h2hMatches.isNotEmpty ? controllerState.h2hMatches.first : null,
-                           onShowDetails: () => _showH2HMatchesPopup(context, ref)
-                         ),
-                      )
-                    else
-                      _GradientBorderCard( // DEĞİŞİKLİK
-                        context: context,
-                        gradientColors: [Colors.grey.shade400, Colors.grey.shade600],
-                        child: Padding(
-                          padding: const EdgeInsets.all(16.0),
-                          child: Text(
-                            "Şu anda aralarındaki maçlar özelliği yalnızca aynı sezon takımlarının karşılaşmalarında görünebilir durumdadır.\nYakında daha kapsamlı veriler sunmak için çalışıyoruz.",
-                            textAlign: TextAlign.center,
-                            style: theme.textTheme.bodySmall?.copyWith(fontStyle: FontStyle.italic, color: theme.colorScheme.onSurfaceVariant),
-                          ),
-                        ),
-                      ),
-                    _GradientBorderCard( // DEĞİŞİKLİK
-                      context: context,
-                      gradientColors: _resultCardGradient,
-                      child: ComparisonStatsCardWidget( 
-                        theme: theme,
-                        team1Data: team1Stats.value!,
-                        team2Data: team2Stats.value!,
-                        statsSettings: statsSettings,
-                        numberOfMatchesToCompare: int.tryParse(_matchCountController.text) ?? 5,
-                        onShowDetailedMatchList: (ctx, matches, name) => _showDetailedMatchListPopup(ctx, matches, name),
-                        onShowTeamGraphs: (ctx, teamData) => ScaffoldMessenger.of(ctx).showSnackBar( const SnackBar(content: Text('Grafik özelliği bu ekranda aktif değil.'))),
+                        keyboardType: TextInputType.number,
+                        inputFormatters: <TextInputFormatter>[FilteringTextInputFormatter.digitsOnly],
+                        maxLength: 2,
                       ),
                     ),
+                    const SizedBox(width: 16),
+                    ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        padding: controllerState.isLoading
+                            ? const EdgeInsets.symmetric(horizontal: 16, vertical: 10)
+                            : const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        minimumSize: const Size(64, 48),
+                      ),
+                      icon: controllerState.isLoading
+                          ? SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: theme.colorScheme.onPrimary, strokeWidth: 2.5))
+                          : const Icon(Icons.insights, size: 20),
+                      label: Text(controllerState.isLoading ? 'Analiz Ediliyor' : 'Karşılaştırma Analizi'),
+                      onPressed: !canCompare
+                          ? null
+                          : () {
+                              FocusScope.of(context).unfocus();
+                              HapticFeedback.mediumImpact();
+                              ref.read(advancedComparisonControllerProvider.notifier).performAdvancedComparison(
+                                    matchCount: int.tryParse(_matchCountController.text) ?? 5
+                                  );
+                            },
+                    )
                   ],
                 ),
-              )
-            else
-              const Padding(
-                padding: EdgeInsets.only(top: 32.0, bottom: 32.0),
-                child: Center(child: Text('Gelişmiş karşılaştırma için seçimleri yapın.', textAlign: TextAlign.center, style: TextStyle(color: Colors.grey))),
               ),
-          ],
+            ],
+          ),
         ),
-      ),
+        
+        if (controllerState.errorMessage != null)
+          Center(child: Padding(padding: const EdgeInsets.all(16.0), child: Text(controllerState.errorMessage!, textAlign: TextAlign.center, style: TextStyle(color: theme.colorScheme.error, fontSize: 16.0))))
+        
+        else
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            child: Column(
+              children: [
+                // DEĞİŞİKLİK: AI Kartı artık sadece belirli durumlarda gösteriliyor
+                if (showAiCard)
+                  AiAnalysisCard(
+                    aiCommentary: controllerState.aiCommentary, 
+                    gradientColors: _aiCardGradient,
+                  ),
+
+                if (team1Stats.hasValue && team2Stats.hasValue && team1Stats.value != null && team2Stats.value != null) ...[
+                  if (controllerState.h2hStats.isNotEmpty)
+                    _GradientBorderCard(
+                      context: context,
+                      gradientColors: _resultCardGradient.reversed.toList(),
+                      child: H2HSummaryCard(
+                         theme: theme, 
+                         h2hStats: controllerState.h2hStats,
+                         team1Data: team1Stats.value!,
+                         team2Data: team2Stats.value!,
+                         lastMatch: controllerState.h2hMatches.isNotEmpty ? controllerState.h2hMatches.first : null,
+                         onShowDetails: () => _showH2HMatchesPopup(context, ref)
+                       ),
+                    ),
+                  _GradientBorderCard(
+                    context: context,
+                    gradientColors: _resultCardGradient,
+                    child: ComparisonStatsCardWidget( 
+                      theme: theme,
+                      team1Data: team1Stats.value!,
+                      team2Data: team2Stats.value!,
+                      statsSettings: statsSettings,
+                      numberOfMatchesToCompare: int.tryParse(_matchCountController.text) ?? 5,
+                      onShowDetailedMatchList: (ctx, matches, name) => _showDetailedMatchListPopup(ctx, matches, name),
+                      onShowTeamGraphs: (ctx, teamData) => ScaffoldMessenger.of(ctx).showSnackBar( const SnackBar(content: Text('Grafik özelliği bu ekranda aktif değil.'))),
+                    ),
+                  ),
+                ] else if (!controllerState.isLoading)
+                  const Padding(
+                    padding: EdgeInsets.only(top: 32.0, bottom: 32.0),
+                    child: Center(child: Text('Gelişmiş karşılaştırma için seçimleri yapın.', textAlign: TextAlign.center, style: TextStyle(color: Colors.grey))),
+                  ),
+              ],
+            ),
+          ),
+      ],
     );
   }
 }
