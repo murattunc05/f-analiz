@@ -5,7 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'data_service.dart';
 import 'widgets/league_selection_dialog_content.dart';
 import 'widgets/team_selection_dialog_content.dart';
-import 'main.dart'; 
+import 'main.dart';
 import 'utils/dialog_utils.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'widgets/team_setup_card_widget.dart';
@@ -13,7 +13,7 @@ import 'widgets/comparison_stats_card_widget.dart';
 import 'widgets/comparison_result_card_widget.dart';
 import 'widgets/detailed_match_list_content.dart';
 import 'widgets/full_comparison_expectations_content.dart';
-import 'features/advanced_comparison/advanced_comparison_controller.dart'; 
+import 'features/advanced_comparison/advanced_comparison_controller.dart';
 import 'widgets/h2h_summary_card.dart';
 import 'widgets/h2h_popup_content.dart';
 import 'widgets/modern_header_widget.dart';
@@ -35,6 +35,37 @@ class AdvancedComparisonScreen extends ConsumerWidget {
   });
 
   final TextEditingController _matchCountController = TextEditingController(text: '5');
+  
+  // Bu ekrana özel gradyan renkleri
+  static const List<Color> _setupCardGradient = [Color(0xffa3e635), Color(0xff4d7c0f), Color(0xff166534)];
+  static const List<Color> _resultCardGradient = [Color(0xfff59e0b), Color(0xffef4444), Color(0xff8b5cf6)];
+
+
+  // YENİ WIDGET: Gradyan çerçeveli kart
+  Widget _GradientBorderCard({required Widget child, required BuildContext context, required List<Color> gradientColors}) {
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 8.0),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16.0),
+        gradient: LinearGradient(
+          colors: gradientColors,
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(1.5), 
+        child: Container(
+          clipBehavior: Clip.antiAlias,
+          decoration: BoxDecoration(
+            color: Theme.of(context).cardColor,
+            borderRadius: BorderRadius.circular(15.0),
+          ),
+          child: child,
+        ),
+      ),
+    );
+  }
 
   Future<void> _selectLeagueForTeam(BuildContext context, WidgetRef ref, int teamNumber) async {
     final controller = ref.read(advancedComparisonControllerProvider.notifier);
@@ -207,25 +238,33 @@ class AdvancedComparisonScreen extends ConsumerWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  TeamSetupCardWidget(
-                    theme: theme, cardTitle: '1. Takım Ayarları',
-                    selectedLeague: controllerState.selectedLeague1,
-                    selectedSeasonApiVal: controllerState.selectedSeason1,
-                    currentTeamName: controllerState.selectedTeam1 ?? '',
-                    globalCurrentSeasonApiValue: currentSeasonApiValue,
-                    onLeagueSelectTap: () => _selectLeagueForTeam(context, ref, 1),
-                    onTeamSelectTap: () => _selectTeam(context, ref, 1),
-                    onSeasonIconTap: () => _showSeasonSelectionDialogForTeam(context, ref, 1),
+                  _GradientBorderCard( // DEĞİŞİKLİK
+                    context: context,
+                    gradientColors: _setupCardGradient,
+                    child: TeamSetupCardWidget(
+                      theme: theme, cardTitle: '1. Takım Ayarları',
+                      selectedLeague: controllerState.selectedLeague1,
+                      selectedSeasonApiVal: controllerState.selectedSeason1,
+                      currentTeamName: controllerState.selectedTeam1 ?? '',
+                      globalCurrentSeasonApiValue: currentSeasonApiValue,
+                      onLeagueSelectTap: () => _selectLeagueForTeam(context, ref, 1),
+                      onTeamSelectTap: () => _selectTeam(context, ref, 1),
+                      onSeasonIconTap: () => _showSeasonSelectionDialogForTeam(context, ref, 1),
+                    ),
                   ),
-                  TeamSetupCardWidget(
-                    theme: theme, cardTitle: '2. Takım Ayarları',
-                    selectedLeague: controllerState.selectedLeague2,
-                    selectedSeasonApiVal: controllerState.selectedSeason2,
-                    currentTeamName: controllerState.selectedTeam2 ?? '',
-                    globalCurrentSeasonApiValue: currentSeasonApiValue,
-                    onLeagueSelectTap: () => _selectLeagueForTeam(context, ref, 2),
-                    onTeamSelectTap: () => _selectTeam(context, ref, 2),
-                    onSeasonIconTap: () => _showSeasonSelectionDialogForTeam(context, ref, 2),
+                  _GradientBorderCard( // DEĞİŞİKLİK
+                    context: context,
+                    gradientColors: _setupCardGradient,
+                    child: TeamSetupCardWidget(
+                      theme: theme, cardTitle: '2. Takım Ayarları',
+                      selectedLeague: controllerState.selectedLeague2,
+                      selectedSeasonApiVal: controllerState.selectedSeason2,
+                      currentTeamName: controllerState.selectedTeam2 ?? '',
+                      globalCurrentSeasonApiValue: currentSeasonApiValue,
+                      onLeagueSelectTap: () => _selectLeagueForTeam(context, ref, 2),
+                      onTeamSelectTap: () => _selectTeam(context, ref, 2),
+                      onSeasonIconTap: () => _showSeasonSelectionDialogForTeam(context, ref, 2),
+                    ),
                   ),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 12.0),
@@ -286,33 +325,37 @@ class AdvancedComparisonScreen extends ConsumerWidget {
                 child: Column(
                   children: [
                     if (comparisonResult.hasValue && comparisonResult.value != null) ...[
-                      ComparisonResultCardWidget(
-                        theme: theme,
-                        comparisonResult: comparisonResult.value!,
-                        team1Stats: team1Stats.value,
-                        team2Stats: team2Stats.value,
-                        statsSettings: statsSettings,
-                        numberOfMatchesToCompare: int.tryParse(_matchCountController.text) ?? 5,
-                        onFullComparisonTap: () => _showFullComparisonDialog(context, team1Stats.value!, team2Stats.value!, comparisonResult.value!),
+                      _GradientBorderCard( // DEĞİŞİKLİK
+                        context: context,
+                        gradientColors: _resultCardGradient,
+                        child: ComparisonResultCardWidget(
+                          theme: theme,
+                          comparisonResult: comparisonResult.value!,
+                          team1Stats: team1Stats.value,
+                          team2Stats: team2Stats.value,
+                          statsSettings: statsSettings,
+                          numberOfMatchesToCompare: int.tryParse(_matchCountController.text) ?? 5,
+                          onFullComparisonTap: () => _showFullComparisonDialog(context, team1Stats.value!, team2Stats.value!, comparisonResult.value!),
+                        ),
                       ),
-                      const SizedBox(height: 16),
                     ],
                     if (controllerState.h2hStats.isNotEmpty)
-                      H2HSummaryCard(
-                         theme: theme, 
-                         h2hStats: controllerState.h2hStats,
-                         team1Data: team1Stats.value!,
-                         team2Data: team2Stats.value!,
-                         lastMatch: controllerState.h2hMatches.isNotEmpty ? controllerState.h2hMatches.first : null,
-                         onShowDetails: () => _showH2HMatchesPopup(context, ref)
-                       )
+                      _GradientBorderCard( // DEĞİŞİKLİK
+                        context: context,
+                        gradientColors: _resultCardGradient.reversed.toList(),
+                        child: H2HSummaryCard(
+                           theme: theme, 
+                           h2hStats: controllerState.h2hStats,
+                           team1Data: team1Stats.value!,
+                           team2Data: team2Stats.value!,
+                           lastMatch: controllerState.h2hMatches.isNotEmpty ? controllerState.h2hMatches.first : null,
+                           onShowDetails: () => _showH2HMatchesPopup(context, ref)
+                         ),
+                      )
                     else
-                      Card(
-                        elevation: 1.0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          side: BorderSide(color: theme.dividerColor, width: 0.5)
-                        ),
+                      _GradientBorderCard( // DEĞİŞİKLİK
+                        context: context,
+                        gradientColors: [Colors.grey.shade400, Colors.grey.shade600],
                         child: Padding(
                           padding: const EdgeInsets.all(16.0),
                           child: Text(
@@ -322,15 +365,18 @@ class AdvancedComparisonScreen extends ConsumerWidget {
                           ),
                         ),
                       ),
-                    const SizedBox(height: 16),
-                    ComparisonStatsCardWidget( 
-                      theme: theme,
-                      team1Data: team1Stats.value!,
-                      team2Data: team2Stats.value!,
-                      statsSettings: statsSettings,
-                      numberOfMatchesToCompare: int.tryParse(_matchCountController.text) ?? 5,
-                      onShowDetailedMatchList: (ctx, matches, name) => _showDetailedMatchListPopup(ctx, matches, name),
-                      onShowTeamGraphs: (ctx, teamData) => ScaffoldMessenger.of(ctx).showSnackBar( const SnackBar(content: Text('Grafik özelliği bu ekranda aktif değil.'))),
+                    _GradientBorderCard( // DEĞİŞİKLİK
+                      context: context,
+                      gradientColors: _resultCardGradient,
+                      child: ComparisonStatsCardWidget( 
+                        theme: theme,
+                        team1Data: team1Stats.value!,
+                        team2Data: team2Stats.value!,
+                        statsSettings: statsSettings,
+                        numberOfMatchesToCompare: int.tryParse(_matchCountController.text) ?? 5,
+                        onShowDetailedMatchList: (ctx, matches, name) => _showDetailedMatchListPopup(ctx, matches, name),
+                        onShowTeamGraphs: (ctx, teamData) => ScaffoldMessenger.of(ctx).showSnackBar( const SnackBar(content: Text('Grafik özelliği bu ekranda aktif değil.'))),
+                      ),
                     ),
                   ],
                 ),

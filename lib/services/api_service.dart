@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 
 class ApiService {
   final String _baseUrl = 'https://v3.football.api-sports.io';
+  // API Token'ınızı buraya girin. Güvenlik için bu token'ı koddan ayırmak (örn: environment variables) daha iyidir.
   final String _apiToken = '2573c2e78a906e703f9e8fd1862686e0'; 
 
   Map<String, String> get _headers => {
@@ -12,7 +13,8 @@ class ApiService {
         'x-rapidapi-key': _apiToken,
       };
 
-  Future<dynamic> _get(String endpoint) async {
+  // DEĞİŞİKLİK: Metot public yapıldı (_get -> get)
+  Future<dynamic> get(String endpoint) async {
     final response = await http.get(
       Uri.parse('$_baseUrl/$endpoint'),
       headers: _headers,
@@ -37,13 +39,13 @@ class ApiService {
   }
 
   Future<List<dynamic>> getMatchesForDate(DateTime date) async {
-    final utcDate = date.toUtc();
-    final String dateString = "${utcDate.year}-${utcDate.month.toString().padLeft(2, '0')}-${utcDate.day.toString().padLeft(2, '0')}";
-    return await _get('fixtures?date=$dateString');
+    // Tarih formatlamasının UTC'ye göre yapıldığından emin olalım
+    final String dateString = "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
+    return await get('fixtures?date=$dateString');
   }
 
   Future<List<dynamic>> getAvailableCompetitions() async {
-    final allCompetitions = await _get('leagues');
+    final allCompetitions = await get('leagues');
     
     return (allCompetitions as List)
         .map((item) {
@@ -68,6 +70,6 @@ class ApiService {
   }
 
   Future<List<dynamic>> getFullFixtureDetails(int fixtureId) async {
-    return await _get('fixtures?id=$fixtureId');
+    return await get('fixtures?id=$fixtureId');
   }
 }

@@ -215,7 +215,6 @@ class HomeScreenState extends State<HomeScreen> {
         statsSettings: widget.currentStatsSettings,
         currentSeasonApiValue: widget.currentSeasonApiValue,
         scrollController: _scrollControllers[1],
-        // EKSİK OLAN PARAMETRELER EKLENİYOR
         scaffoldKey: _scaffoldKey, 
         onSearchTap: _openSearchScreen,
       ),
@@ -224,7 +223,6 @@ class HomeScreenState extends State<HomeScreen> {
         statsSettings: widget.currentStatsSettings,
         currentSeasonApiValue: widget.currentSeasonApiValue,
         scrollController: _scrollControllers[2],
-        // EKSİK OLAN PARAMETRELER EKLENİYOR
         scaffoldKey: _scaffoldKey,
         onSearchTap: _openSearchScreen,
       ),
@@ -233,7 +231,6 @@ class HomeScreenState extends State<HomeScreen> {
         statsSettings: widget.currentStatsSettings,
         currentSeasonApiValue: widget.currentSeasonApiValue,
         scrollController: _scrollControllers[3],
-        // EKSİK OLAN PARAMETRELER EKLENİYOR
         scaffoldKey: _scaffoldKey,
         onSearchTap: _openSearchScreen,
       ),
@@ -248,12 +245,13 @@ class HomeScreenState extends State<HomeScreen> {
     } else {
       if (mounted) {
         setState(() => _selectedIndex = index);
-        _pageController.animateToPage(index, duration: const Duration(milliseconds: 300), curve: Curves.easeInOut);
+        _pageController.jumpToPage(index);
       }
     }
   }
 
-  void _onPageChanged(int index) { if (mounted) setState(() => _selectedIndex = index); }
+  // onPageChanged metodu artık kullanılmayacak
+  // void _onPageChanged(int index) { if (mounted) setState(() => _selectedIndex = index); }
 
   @override
   void dispose() {
@@ -396,7 +394,8 @@ class HomeScreenState extends State<HomeScreen> {
       drawer: Drawer(child: ListView(padding: EdgeInsets.zero,children: <Widget>[Container(height: 120, padding: const EdgeInsets.fromLTRB(16.0, 40.0, 16.0, 8.0), decoration: BoxDecoration(color: theme.colorScheme.primary), child: Align(alignment: Alignment.centerLeft, child: Text('Ayarlar', style: theme.textTheme.headlineSmall?.copyWith(color: theme.colorScheme.onPrimary)))), ListTile(leading: Icon( widget.currentBrightnessPreference == BrightnessPreference.light ? Icons.light_mode_outlined : widget.currentBrightnessPreference == BrightnessPreference.dark ? Icons.dark_mode_outlined : Icons.brightness_auto_outlined ), title: Text( widget.currentBrightnessPreference == BrightnessPreference.light ? 'Mod: Aydınlık' : widget.currentBrightnessPreference == BrightnessPreference.dark ? 'Mod: Koyu' : 'Mod: Sistem Varsayılanı' ), onTap: () { BrightnessPreference nextPreference; if (widget.currentBrightnessPreference == BrightnessPreference.light) { nextPreference = BrightnessPreference.dark; } else if (widget.currentBrightnessPreference == BrightnessPreference.dark) nextPreference = BrightnessPreference.system; else nextPreference = BrightnessPreference.light; widget.onBrightnessPreferenceChanged(nextPreference); }), ListTile(leading: const Icon(Icons.palette_outlined), title: const Text('Temalar'), subtitle: Text('Mevcut: ${_getPaletteDisplayName(widget.currentPalette)}'), onTap: () { Navigator.pop(context); _showThemePaletteSelectionDialog(context); }), ListTile(leading: const Icon(Icons.calendar_today_outlined), title: const Text('Sezon'), subtitle: Text('Geçerli: ${_getDisplaySeason(widget.currentSeasonApiValue)}'), onTap: () { Navigator.pop(context); _showSeasonSelectionDialog(context); }), const Divider(), ListTile(leading: const Icon(Icons.visibility_outlined), title: const Text('Görüntülenecek İstatistikler'), onTap: () { Navigator.pop(context); _showStatsDisplaySettingsDialog(context); }), ListTile(leading: const Icon(Icons.info_outline), title: const Text('Hakkında'), onTap: () { Navigator.pop(context); _showAboutDialog(context); })])),
       body: PageView(
         controller: _pageController,
-        onPageChanged: _onPageChanged,
+        physics: const NeverScrollableScrollPhysics(), // Kaydırmayı engelle
+        // onPageChanged: _onPageChanged, // Artık gerekli değil
         children: _widgetOptions,
       ),
       bottomNavigationBar: BottomNavigationBar(

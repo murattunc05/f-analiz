@@ -1,21 +1,23 @@
 // lib/features/matches/matches_controller.dart
-import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart'; // foundation.dart yerine bunu kullanmak yeterli
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../services/api_service.dart';
 import '../../match_detail_screen.dart';
 
+// MatchDetailState ve MatchesState sınıfları aynı kalıyor...
 class MatchDetailState {
   final AsyncValue<Map<String, dynamic>> fixtureDetails;
   const MatchDetailState({ this.fixtureDetails = const AsyncValue.loading() });
+
   MatchDetailState copyWith({ AsyncValue<Map<String, dynamic>>? fixtureDetails }) {
     return MatchDetailState(fixtureDetails: fixtureDetails ?? this.fixtureDetails);
   }
 }
 
 class MatchesState {
-  final AsyncValue<List<dynamic>> allMatches;
+  final AsyncValue<List<dynamic>> liveMatches;
+  final AsyncValue<List<dynamic>> selectedDateMatches;
   final Set<int> activeLeagueIds;
   final DateTime selectedDate;
   final List<dynamic> availableCompetitions;
@@ -23,7 +25,8 @@ class MatchesState {
   final bool isLoadingCompetitions;
 
   const MatchesState({
-    this.allMatches = const AsyncValue.loading(),
+    this.liveMatches = const AsyncValue.loading(),
+    this.selectedDateMatches = const AsyncValue.loading(),
     this.activeLeagueIds = const {},
     required this.selectedDate,
     this.availableCompetitions = const [],
@@ -32,7 +35,8 @@ class MatchesState {
   });
 
   MatchesState copyWith({
-    AsyncValue<List<dynamic>>? allMatches,
+    AsyncValue<List<dynamic>>? liveMatches,
+    AsyncValue<List<dynamic>>? selectedDateMatches,
     Set<int>? activeLeagueIds,
     DateTime? selectedDate,
     List<dynamic>? availableCompetitions,
@@ -40,7 +44,8 @@ class MatchesState {
     bool? isLoadingCompetitions,
   }) {
     return MatchesState(
-      allMatches: allMatches ?? this.allMatches,
+      liveMatches: liveMatches ?? this.liveMatches,
+      selectedDateMatches: selectedDateMatches ?? this.selectedDateMatches,
       activeLeagueIds: activeLeagueIds ?? this.activeLeagueIds,
       selectedDate: selectedDate ?? this.selectedDate,
       availableCompetitions: availableCompetitions ?? this.availableCompetitions,
@@ -50,8 +55,9 @@ class MatchesState {
   }
 }
 
+
 class MatchesController extends StateNotifier<MatchesState> {
-  MatchesController(this._apiService, this._prefs) : super(MatchesState(selectedDate: DateTime.now())) {
+  MatchesController(this._apiService, this._prefs) : super(MatchesState(selectedDate: DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day))) {
     _initialize();
   }
 
@@ -61,8 +67,8 @@ class MatchesController extends StateNotifier<MatchesState> {
 
   Future<void> _initialize() async {
     final competitionsFuture = fetchAvailableCompetitions();
-    final matchesFuture = fetchMatches();
-    await Future.wait([competitionsFuture, matchesFuture]);
+    final initialFetchFuture = fetchMatches(isInitialLoad: true);
+    await Future.wait([competitionsFuture, initialFetchFuture]);
   }
 
   Future<void> fetchAvailableCompetitions() async {
@@ -87,19 +93,41 @@ class MatchesController extends StateNotifier<MatchesState> {
     }
   }
 
-  Future<void> fetchMatches() async {
-    state = state.copyWith(allMatches: const AsyncValue.loading());
+  Future<void> fetchMatches({bool isInitialLoad = false, bool isRefresh = false}) async {
+    if (isRefresh) {
+      state = state.copyWith(liveMatches: const AsyncValue.loading());
+    } else {
+      state = state.copyWith(selectedDateMatches: const AsyncValue.loading());
+    }
+
     try {
-      final allMatches = await _apiService.getMatchesForDate(state.selectedDate);
-      state = state.copyWith(allMatches: AsyncValue.data(allMatches));
+      if (isRefresh || isInitialLoad) {
+        // DEĞİŞİKLİK: _get -> get
+        final liveMatchesData = await _apiService.get('fixtures?live=all');
+        state = state.copyWith(liveMatches: AsyncValue.data(liveMatchesData));
+      }
+      
+      if (isInitialLoad || !isRefresh) {
+        final selectedDateMatchesData = await _apiService.getMatchesForDate(state.selectedDate);
+        state = state.copyWith(selectedDateMatches: AsyncValue.data(selectedDateMatchesData));
+      }
+
     } catch (e, st) {
-      state = state.copyWith(allMatches: AsyncValue.error(e, st));
+       if (isRefresh) {
+         state = state.copyWith(liveMatches: AsyncValue.error(e, st));
+       } else {
+         state = state.copyWith(
+           liveMatches: isInitialLoad ? AsyncValue.error(e, st) : state.liveMatches,
+           selectedDateMatches: AsyncValue.error(e, st)
+         );
+       }
     }
   }
   
   void changeDate(DateTime newDate) {
     final newDateWithoutTime = DateTime(newDate.year, newDate.month, newDate.day);
-    if(newDateWithoutTime.isAtSameMomentAs(DateTime(state.selectedDate.year, state.selectedDate.month, state.selectedDate.day))) return;
+    if(newDateWithoutTime.isAtSameMomentAs(state.selectedDate)) return;
+    
     state = state.copyWith(selectedDate: newDateWithoutTime);
     fetchMatches();
   }
@@ -153,13 +181,15 @@ class MatchesController extends StateNotifier<MatchesState> {
     
     return result;
   }
-
+  
   Future<void> updateSelectedCompetitions(Set<int> newIds) async {
     await _prefs.setStringList(_kSelectedLeaguesKey, newIds.map((id) => id.toString()).toList());
     state = state.copyWith(
       selectedCompetitionIds: newIds,
       activeLeagueIds: {},
     );
+    // Yeni ligler seçildiğinde maçları yeniden çek
+    fetchMatches();
   }
 
   void setActiveLeagueFilter(Set<int> leagueIds) {
@@ -187,9 +217,7 @@ class MatchesController extends StateNotifier<MatchesState> {
 }
 
 class MatchDetailController extends StateNotifier<MatchDetailState> {
-  MatchDetailController(this._apiService, this.fixtureId) : super(const MatchDetailState()) {
-    fetchDetails();
-  }
+  MatchDetailController(this._apiService, this.fixtureId) : super(const MatchDetailState());
   
   final ApiService _apiService;
   final int fixtureId;
@@ -210,7 +238,9 @@ class MatchDetailController extends StateNotifier<MatchDetailState> {
 }
 
 final apiServiceProvider = Provider<ApiService>((ref) => ApiService());
+
 final sharedPreferencesProvider = FutureProvider<SharedPreferences>((ref) async => await SharedPreferences.getInstance());
+
 final matchesControllerProvider = StateNotifierProvider<MatchesController, MatchesState>((ref) {
   final apiService = ref.watch(apiServiceProvider);
   final prefs = ref.watch(sharedPreferencesProvider).asData!.value;

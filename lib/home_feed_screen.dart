@@ -156,14 +156,6 @@ class _HomeFeedScreenState extends ConsumerState<HomeFeedScreen> with TickerProv
                 onSearchTap: widget.onSearchTap,
               ),
             ),
-            SliverToBoxAdapter(
-              child: AnimatedBuilder(
-                animation: _tabController,
-                builder: (context, child) {
-                  return _tabController.index != 1 ? _buildLeagueFilterBar() : const SizedBox.shrink();
-                }
-              ),
-            ),
             SliverPersistentHeader(
               pinned: true,
               delegate: _SliverAppBarDelegate(
@@ -178,6 +170,16 @@ class _HomeFeedScreenState extends ConsumerState<HomeFeedScreen> with TickerProv
                     Tab(text: "Puan Durumu"),
                   ],
                 ),
+              ),
+            ),
+            // DEĞİŞİKLİK: Filtreleme çubuğu buraya taşındı ve Sliver'a çevrildi.
+            SliverToBoxAdapter(
+              child: AnimatedBuilder(
+                animation: _tabController,
+                builder: (context, child) {
+                  // Sadece 0. ve 2. sekmelerde göster
+                  return _tabController.index != 1 ? _buildLeagueFilterBar() : const SizedBox.shrink();
+                }
               ),
             ),
           ];
@@ -216,6 +218,7 @@ class _SliverAppBarDelegate extends SliverPersistentHeaderDelegate {
   @override
   Widget build(
       BuildContext context, double shrinkOffset, bool overlapsContent) {
+    // DEĞİŞİKLİK: Arka plan rengi ayarlandı
     return Container(
       color: Theme.of(context).scaffoldBackgroundColor,
       child: _tabBar,
@@ -224,7 +227,6 @@ class _SliverAppBarDelegate extends SliverPersistentHeaderDelegate {
 
   @override
   bool shouldRebuild(_SliverAppBarDelegate oldDelegate) {
-    // DEĞİŞİKLİK: Tema veya TabBar değiştiğinde yeniden çizim yapmasını sağlıyoruz.
     return oldDelegate._tabBar != _tabBar;
   }
 }

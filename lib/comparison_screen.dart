@@ -13,7 +13,7 @@ import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'services/logo_service.dart';
 import 'services/team_name_service.dart';
-import 'features/team_comparison/comparison_controller.dart'; 
+import 'features/team_comparison/comparison_controller.dart';
 import 'widgets/modern_header_widget.dart';
 
 class ComparisonScreen extends ConsumerWidget {
@@ -31,7 +31,10 @@ class ComparisonScreen extends ConsumerWidget {
     required this.scaffoldKey,
     required this.onSearchTap,
   });
-  
+
+  // Bu ekrana özel gradyan renkleri
+  static const List<Color> _cardGradient = [Color(0xff22d3ee), Color(0xff0e7490), Color(0xff4c1d95)];
+
   Future<void> _selectLeague(BuildContext context, WidgetRef ref) async {
     final controller = ref.read(comparisonControllerProvider.notifier);
     final selectedLeague = ref.read(comparisonControllerProvider).selectedLeague;
@@ -106,7 +109,34 @@ class ComparisonScreen extends ConsumerWidget {
       ),
     );
   }
+  
+  // YENİ WIDGET: Gradyan çerçeveli kart
+  Widget _GradientBorderCard({required Widget child, required BuildContext context}) {
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 8.0),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16.0),
+        gradient: const LinearGradient(
+          colors: _cardGradient,
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(1.5), 
+        child: Container(
+          clipBehavior: Clip.antiAlias,
+          decoration: BoxDecoration(
+            color: Theme.of(context).cardColor,
+            borderRadius: BorderRadius.circular(15.0),
+          ),
+          child: child,
+        ),
+      ),
+    );
+  }
 
+  // DEĞİŞİKLİK: Bu metotlar artık en dıştaki Card'ı döndürmüyor, sadece içeriği döndürüyor.
   Widget _buildTeamStatsContent(Map<String, dynamic> team1Data, Map<String, dynamic> team2Data, ThemeData theme, String? selectedLeague) {
     if (!statsSettings.showOverallLast5Stats) return const SizedBox.shrink();
 
@@ -146,8 +176,7 @@ class ComparisonScreen extends ConsumerWidget {
     addStatIfEnabled('cleanSheetSayisi', 'Clean Sheet Sayısı'); addStatIfEnabled('cleanSheetYuzdesi', 'Clean Sheet Yüzdesi', isPercentage: true);
     addStatIfEnabled('gol2UstuOlasilik', '2+ Gol Olasılığı', isPercentage: true);
     
-    return Card(
-      child: Padding(padding: const EdgeInsets.all(16.0), child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+    return Padding(padding: const EdgeInsets.all(16.0), child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Padding(padding: const EdgeInsets.only(bottom: 8.0), child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
           Expanded(flex: 4, child: Row(mainAxisAlignment: MainAxisAlignment.start, children: [
             if (team1LogoUrl != null) Padding(padding: const EdgeInsets.only(right: 4.0), child: CachedNetworkImage(imageUrl: team1LogoUrl, width: titleLogoSize, height: titleLogoSize, fit: BoxFit.contain, placeholder: (c, u) => SizedBox(width: titleLogoSize, height: titleLogoSize), errorWidget: (c,u,e) => Icon(Icons.shield_outlined, size: titleLogoSize))) else Padding(padding: const EdgeInsets.only(right: 4.0), child: Icon(Icons.shield_outlined, size: titleLogoSize)),
@@ -163,8 +192,7 @@ class ComparisonScreen extends ConsumerWidget {
         if (statRows.isNotEmpty) ...statRows else const Padding(padding: EdgeInsets.symmetric(vertical: 16.0), child: Center(child: Text("Görüntülenecek istatistik yok."))),
         if (statsSettings.showSon5MacDetaylari && matchDetails1.isNotEmpty) ...[const SizedBox(height: 10), ExpansionTile(tilePadding: EdgeInsets.zero, iconColor: theme.colorScheme.primary, collapsedIconColor: theme.colorScheme.onSurfaceVariant, title: Text('Maç Detayları ($team1DisplayTitle)', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold)), children: matchDetails1.map((match) => ListTile(dense: true, title: Text('${match["date"]}: ${capitalizeFirstLetterOfWordsUtils(match["homeTeam"])} ${match["homeGoals"]} - ${match["awayGoals"]} ${capitalizeFirstLetterOfWordsUtils(match["awayTeam"])} (${match["result"]})', style: theme.textTheme.bodySmall))).toList())],
         if (statsSettings.showSon5MacDetaylari && matchDetails2.isNotEmpty) ...[const SizedBox(height: 10), ExpansionTile(tilePadding: EdgeInsets.zero, iconColor: theme.colorScheme.primary, collapsedIconColor: theme.colorScheme.onSurfaceVariant, title: Text('Maç Detayları ($team2DisplayTitle)', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold)), children: matchDetails2.map((match) => ListTile(dense: true, title: Text('${match["date"]}: ${capitalizeFirstLetterOfWordsUtils(match["homeTeam"])} ${match["homeGoals"]} - ${match["awayGoals"]} ${capitalizeFirstLetterOfWordsUtils(match["awayTeam"])} (${match["result"]})', style: theme.textTheme.bodySmall))).toList())]
-      ]))
-    );
+      ]));
   }
 
   Widget _buildComparisonResultCard(Map<String, dynamic> result, Map<String, dynamic> team1Data, Map<String, dynamic> team2Data, ThemeData theme) {
@@ -180,14 +208,14 @@ class ComparisonScreen extends ConsumerWidget {
         Text(value, style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold)),
       ]));
     }
-    return Card(child: Padding(padding: const EdgeInsets.all(16.0), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+    return Padding(padding: const EdgeInsets.all(16.0), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Row(children: [Icon(Icons.military_tech_outlined, color: theme.colorScheme.primary, size: 24), const SizedBox(width: 8), Text('Karşılaştırma Sonuçları $analyzedMatchesSuffix:', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold, color: theme.colorScheme.primary))]),
       const Divider(height: 20, thickness: 0.5),
       buildSingleInfoRow('İstatistiklere Göre Olası Kazanan', result["kazanan"].toString(), icon: Icons.emoji_events_outlined, iconColor: Colors.amber.shade700),
       buildSingleInfoRow('Beklenen Toplam Gol', result["beklenenToplamGol"].toString(), icon: Icons.sports_soccer),
       if(statsSettings.showComparisonKgVar) buildSingleInfoRow('Olası Karşılıklı Gol İhtimali', '%${comparisonKgVar.toStringAsFixed(1)}', icon: Icons.sync_alt_outlined),
       buildSingleInfoRow('2+ Gol Olma Olasılığı', '%${result["gol2PlusOlasilik"]}', icon: Icons.stacked_line_chart_outlined),
-    ])));
+    ]));
   }
   
   @override
@@ -211,7 +239,8 @@ class ComparisonScreen extends ConsumerWidget {
               onSearchTap: onSearchTap,
             ),
             Padding( padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 8.0),
-              child: Card( elevation: 1,
+              child: _GradientBorderCard( // DEĞİŞİKLİK
+                context: context,
                 child: Padding( padding: const EdgeInsets.all(16.0),
                   child: Column( mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -249,10 +278,15 @@ class ComparisonScreen extends ConsumerWidget {
                 padding: const EdgeInsets.fromLTRB(16,0,16,16),
                 child: Column(
                   children: [
-                    _buildTeamStatsContent(controllerState.team1Stats.value!, controllerState.team2Stats.value!, theme, selectedLeague),
+                    _GradientBorderCard( // DEĞİŞİKLİK
+                      context: context,
+                      child: _buildTeamStatsContent(controllerState.team1Stats.value!, controllerState.team2Stats.value!, theme, selectedLeague),
+                    ),
                     if (controllerState.comparisonResult.hasValue && controllerState.comparisonResult.value != null) ...[
-                       const SizedBox(height: 16),
-                      _buildComparisonResultCard(controllerState.comparisonResult.value!, controllerState.team1Stats.value!, controllerState.team2Stats.value!, theme),
+                      _GradientBorderCard( // DEĞİŞİKLİK
+                         context: context,
+                         child: _buildComparisonResultCard(controllerState.comparisonResult.value!, controllerState.team1Stats.value!, controllerState.team2Stats.value!, theme),
+                      )
                     ]
                   ],
                 ),

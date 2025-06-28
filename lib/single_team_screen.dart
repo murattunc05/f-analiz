@@ -5,7 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data_service.dart';
 import '../widgets/league_selection_dialog_content.dart';
 import '../widgets/team_selection_dialog_content.dart';
-import '../main.dart'; 
+import '../main.dart';
 import '../utils.dart';
 import '../utils/dialog_utils.dart';
 import 'package:fl_chart/fl_chart.dart';
@@ -13,7 +13,7 @@ import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../services/logo_service.dart';
 import '../widgets/team_setup_card_widget.dart';
-import '../features/single_team_analysis/single_team_controller.dart'; 
+import '../features/single_team_analysis/single_team_controller.dart';
 import '../services/team_name_service.dart';
 import '../widgets/modern_header_widget.dart';
 
@@ -32,6 +32,9 @@ class SingleTeamScreen extends ConsumerWidget {
     required this.scaffoldKey,
     required this.onSearchTap,
   });
+  
+  // Bu ekrana özel gradyan renkleri
+  static const List<Color> _cardGradient = [Color(0xffec4899), Color(0xff7e22ce), Color(0xff2563eb)];
 
   Future<void> _selectLeague(BuildContext context, WidgetRef ref) async {
     final controller = ref.read(singleTeamControllerProvider.notifier);
@@ -57,9 +60,9 @@ class SingleTeamScreen extends ConsumerWidget {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Lütfen önce bir lig seçin.'), backgroundColor: Colors.redAccent));
       return;
     }
-    if (controllerState.isLoadingTeams) { 
+    if (controllerState.isLoadingTeams) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Takım listesi yükleniyor...')));
-      return; 
+      return;
     }
     
     HapticFeedback.lightImpact();
@@ -77,6 +80,33 @@ class SingleTeamScreen extends ConsumerWidget {
       ref.read(singleTeamControllerProvider.notifier).selectTeam(selectedOriginalTeamName);
     }
   }
+
+  // YENİ WIDGET: Gradyan çerçeveli kart
+  Widget _GradientBorderCard({required Widget child, required BuildContext context}) {
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 8.0),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16.0),
+        gradient: const LinearGradient(
+          colors: _cardGradient,
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(1.5), 
+        child: Container(
+          clipBehavior: Clip.antiAlias,
+          decoration: BoxDecoration(
+            color: Theme.of(context).cardColor,
+            borderRadius: BorderRadius.circular(15.0),
+          ),
+          child: child,
+        ),
+      ),
+    );
+  }
+
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -103,15 +133,21 @@ class SingleTeamScreen extends ConsumerWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  TeamSetupCardWidget(
-                    theme: theme,
-                    cardTitle: "Tek Takım Analizi",
-                    selectedLeague: selectedLeague,
-                    currentTeamName: selectedTeam ?? '',
-                    selectedSeasonApiVal: currentSeasonApiValue,
-                    globalCurrentSeasonApiValue: currentSeasonApiValue,
-                    onLeagueSelectTap: () => _selectLeague(context, ref),
-                    onTeamSelectTap: () => _selectTeam(context, ref),
+                   _GradientBorderCard( // DEĞİŞİKLİK
+                    context: context,
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: TeamSetupCardWidget(
+                        theme: theme,
+                        cardTitle: "Tek Takım Analizi",
+                        selectedLeague: selectedLeague,
+                        currentTeamName: selectedTeam ?? '',
+                        selectedSeasonApiVal: currentSeasonApiValue,
+                        globalCurrentSeasonApiValue: currentSeasonApiValue,
+                        onLeagueSelectTap: () => _selectLeague(context, ref),
+                        onTeamSelectTap: () => _selectTeam(context, ref),
+                      ),
+                    ),
                   ),
                   const SizedBox(height: 12.0),
                   ElevatedButton.icon(
@@ -149,7 +185,8 @@ class SingleTeamScreen extends ConsumerWidget {
                   
                   return InkWell(
                     onTap: () => _showTeamGraphsDialog(context, stats, selectedLeague),
-                    child: Card(
+                    child: _GradientBorderCard( // DEĞİŞİKLİK
+                      context: context,
                       child: Padding(
                         padding: const EdgeInsets.all(16.0),
                         child: _buildTeamStatsCardContent(stats, theme, selectedLeague)
@@ -292,6 +329,7 @@ class SingleTeamScreen extends ConsumerWidget {
     );
   }
 
+  // DEĞİŞİKLİK: Bu metot artık en dıştaki Card'ı döndürmüyor.
   Widget _buildTeamStatsCardContent(Map<String, dynamic> stats, ThemeData theme, String? selectedLeague) {
     if (!statsSettings.showOverallLast5Stats) return const SizedBox.shrink();
 
