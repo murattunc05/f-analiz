@@ -5,6 +5,7 @@ import 'package:futbol_analiz_app/widgets/ai_loading_indicator.dart';
 import 'package:markdown_widget/markdown_widget.dart';
 
 class AiAnalysisCard extends StatelessWidget {
+  // GÜNCELLENDİ: Tekrar String tipini alacak
   final AsyncValue<String> aiCommentary;
   final List<Color> gradientColors;
 
@@ -50,7 +51,8 @@ class AiAnalysisCard extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    Icon(Icons.auto_awesome, color: theme.colorScheme.primary, size: 24),
+                    Icon(Icons.auto_awesome,
+                        color: theme.colorScheme.primary, size: 24),
                     const SizedBox(width: 8),
                     Text(
                       'Yapay Zeka Maç Analizi',
@@ -65,23 +67,34 @@ class AiAnalysisCard extends StatelessWidget {
                 aiCommentary.when(
                   data: (commentary) {
                     if (commentary.isEmpty) {
-                      return const SizedBox.shrink(); 
+                      return const SizedBox.shrink();
                     }
+                    // GÜNCELLENDİ: MarkdownWidget, yeni formatı işleyecek şekilde ayarlandı.
                     return MarkdownWidget(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
                       data: commentary,
                       config: MarkdownConfig(
                         configs: [
                           PConfig(
-                            textStyle: theme.textTheme.bodyMedium ?? const TextStyle(),
+                            textStyle: theme.textTheme.bodyMedium?.copyWith(height: 1.4),
                           ),
-                          H2Config(
-                            style: theme.textTheme.titleSmall?.copyWith(
-                                  fontWeight: FontWeight.bold,
+                          // ### ile gelen başlıklar için stil
+                          H3Config(
+                            style: theme.textTheme.titleMedium?.copyWith(
                                   color: theme.colorScheme.secondary,
-                                  height: 1.8,
-                                ) ??
-                                const TextStyle(),
+                                  fontWeight: FontWeight.w600,
+                                  height: 2.0
+                                ),
                           ),
+                          // - ile gelen liste elemanları için stil
+                          LiConfig(
+                             style: theme.textTheme.bodyMedium,
+                             dotSize: 5,
+                             dotMargin: const EdgeInsets.only(top: 4, left: 4, right: 8),
+                             // Liste elemanları arasındaki boşluk
+                             childMargin: const EdgeInsets.symmetric(vertical: 4),
+                          )
                         ],
                       ),
                     );
