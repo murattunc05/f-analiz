@@ -49,7 +49,6 @@ class AdvancedComparisonState {
   final List<Map<String, dynamic>> h2hMatches;
   final Map<String, int> h2hStats;
 
-  // GÜNCELLENDİ: Yapay zeka yorumu tekrar String formatında tutulacak.
   final AsyncValue<String> aiCommentary;
 
   const AdvancedComparisonState({
@@ -90,7 +89,7 @@ class AdvancedComparisonState {
     bool clearError = false,
     List<Map<String, dynamic>>? h2hMatches,
     Map<String, int>? h2hStats,
-    AsyncValue<String>? aiCommentary, // GÜNCELLENDİ
+    AsyncValue<String>? aiCommentary,
   }) {
     return AdvancedComparisonState(
       selectedLeague1:
@@ -126,7 +125,6 @@ class AdvancedComparisonController
       'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=';
   static const String _apiKey = "AIzaSyBKRuCBnHwZW6Qd4bFnz7ClmrCokb0LKFk";
 
-  // ... Diğer metotlar (selectLeague, selectTeam vb.) aynı kalacak ...
   void _clearH2HData() {
     if (state.h2hMatches.isNotEmpty || state.h2hStats.isNotEmpty) {
       state = state.copyWith(h2hMatches: [], h2hStats: {});
@@ -493,7 +491,6 @@ class AdvancedComparisonController
     }
   }
 
-  // GÜNCELLENDİ: Bu fonksiyon tekrar String döndürecek ve prompt güncellendi.
   Future<String> _generateAiCommentary(Map<String, dynamic> stats1,
       Map<String, dynamic> stats2, Map<String, int> h2hStats) async {
     if (_apiKey.isEmpty) {
@@ -519,25 +516,33 @@ class AdvancedComparisonController
     final int h2hDraws = h2hStats['draws'] ?? 0;
     final int totalH2HMatches = team1H2HWins + team2H2HWins + h2hDraws;
 
-    // YENİ PROMPT: Markdown formatında, kısa, öz ve başlıklı bir yorum istiyor.
+    // YENİ PROMPT: Daha detaylı, istatistiksel ve bahis diliyle yorumlar isteyen, modern bir format.
     String prompt = """
-    Bir futbol veri analisti olarak, sağlanan istatistiklere dayanarak $team1Name ve $team2Name arasındaki maç için kısa ve öz, Markdown formatında başlıklı bir yorum oluştur. Yorumlar net, kısa ve akıcı olsun.
+    Bir uzman futbol analisti ve veri bilimcisi olarak, sağlanan istatistiklere dayanarak $team1Name ve $team2Name arasındaki maç için detaylı, profesyonel ve modern bir Markdown formatında analiz oluştur. Analiz, aşağıdaki bölümleri içermelidir ve dil akıcı, net olmalıdır.
 
     İstatistikler:
-    - Takım 1 ($team1Name): Son $matchCount1 maç, G/B/M: ${stats1['galibiyet'] ?? 0}/${stats1['beraberlik'] ?? 0}/${stats1['maglubiyet'] ?? 0}, Gol Ort: ${stats1['macBasiOrtalamaGol'] ?? 'N/A'}, Yediği Gol Ort: $avgGoalsAgainst1, KG Var: %${stats1['kgVarYuzdesi'] ?? 'N/A'}
-    - Takım 2 ($team2Name): Son $matchCount2 maç, G/B/M: ${stats2['galibiyet'] ?? 0}/${stats2['beraberlik'] ?? 0}/${stats2['maglubiyet'] ?? 0}, Gol Ort: ${stats2['macBasiOrtalamaGol'] ?? 'N/A'}, Yediği Gol Ort: $avgGoalsAgainst2, KG Var: %${stats2['kgVarYuzdesi'] ?? 'N/A'}
+    - Takım 1 ($team1Name): Son $matchCount1 maç, G/B/M: ${stats1['galibiyet'] ?? 0}/${stats1['beraberlik'] ?? 0}/${stats1['maglubiyet'] ?? 0}, Gol Ort: ${stats1['macBasiOrtalamaGol'] ?? 'N/A'}, Yediği Gol Ort: $avgGoalsAgainst1, KG Var: %${stats1['kgVarYuzdesi'] ?? 'N/A'}, Korner Ort: ${stats1['ortalamaKorner'] ?? 'N/A'}
+    - Takım 2 ($team2Name): Son $matchCount2 maç, G/B/M: ${stats2['galibiyet'] ?? 0}/${stats2['beraberlik'] ?? 0}/${stats2['maglubiyet'] ?? 0}, Gol Ort: ${stats2['macBasiOrtalamaGol'] ?? 'N/A'}, Yediği Gol Ort: $avgGoalsAgainst2, KG Var: %${stats2['kgVarYuzdesi'] ?? 'N/A'}, Korner Ort: ${stats2['ortalamaKorner'] ?? 'N/A'}
     - H2H: Toplam $totalH2HMatches maç, $team1Name Galibiyeti: $team1H2HWins, $team2Name Galibiyeti: $team2H2HWins, Beraberlik: $h2hDraws
 
     İstenen Çıktı Formatı (Markdown):
     ### Temel Beklentiler
     - **Maç Sonucu Tahmini:** (Net tahminin: "$team1Name Kazanır", "$team2Name Kazanır" veya "Beraberlik")
-    - **Güven Seviyesi:** (Tahminine güvenin: "Düşük", "Orta", "Yüksek")
-    - **Gol Beklentisi:** (Net beklentin: "2.5 Gol Altı", "2.5 Gol Üstü", "KG Var" vb.)
+    - **Güven Seviyesi:** (Tahminine olan güvenin: "Düşük", "Orta", "Yüksek")
 
-    ### Genel Maç Yorumları
-    - (Maçın genel gidişatı hakkında 1-2 cümlelik akıcı yorum. Örneğin, "$team1Name'in hücum gücü, $team2Name'in savunma zaafıyla birleşince gollü bir maç vadediyor.")
-    - (Kilit istatistiğe dayalı bir yorum. Örneğin, "İki takımın da KG Var yüzdesinin yüksek olması, filelerin karşılıklı havalanma ihtimalini güçlendiriyor.")
-    - (Form veya H2H verisine dayalı kısa bir ek yorum.)
+    ### İstatistiksel Beklentiler
+    - **Toplam Gol:** (Net beklentin: "2.5 Gol Altı", "2.5 Gol Üstü", veya "2-3 Gol Arası" gibi)
+    - **Karşılıklı Gol (KG):** (Net beklentin: "KG Var" veya "KG Yok")
+    - **Toplam Korner:** (Net beklentin: "8.5 Üstü", "10.5 Altı" gibi baremli bir yorum)
+    - **Toplam Kart:** (Net beklentin: "3.5 Üstü", "4.5 Altı" gibi baremli bir yorum)
+
+    ### Maç Yorumu ve Kilit Noktalar
+    - (Takımların mevcut form durumları ve oyun stilleri hakkında 1-2 cümlelik profesyonel bir yorum.)
+    - (H2H istatistiklerinin maça olası etkisini belirten kısa bir not.)
+    - (Maçın kaderini etkileyebilecek kilit bir istatistik veya oyuncu grubuna vurgu yap.)
+
+    ### Öne Çıkan Tahmin
+    - (Tüm analizi özetleyen, en güvendiğin tek ve net bir tahmin. Örneğin: "**Maçın 9.5 Korner Üstü bitmesi bekleniyor.**" veya "**Karşılıklı Gol Var seçeneği öne çıkıyor.**")
     """;
     
     try {
@@ -552,7 +557,6 @@ class AdvancedComparisonController
               ]
             }
           ],
-          // JSON şeması kaldırıldı, çünkü artık düz metin bekliyoruz.
           'safetySettings': [
             {'category': 'HARM_CATEGORY_HARASSMENT', 'threshold': 'BLOCK_NONE'},
             {'category': 'HARM_CATEGORY_HATE_SPEECH', 'threshold': 'BLOCK_NONE'},
