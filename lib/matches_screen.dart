@@ -8,6 +8,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:intl/intl.dart';
 import 'widgets/modern_header_widget.dart';
 
+// CompactMatchCard widget'ında değişiklik yok, aynı kalabilir.
 class CompactMatchCard extends StatelessWidget {
   final Map<String, dynamic> matchData;
   final VoidCallback onTap;
@@ -23,7 +24,6 @@ class CompactMatchCard extends StatelessWidget {
     final goals = matchData['goals'];
     final status = fixture['status']['short'];
 
-    // Hata düzeltmesi için logo URL'lerini nullable olarak tanımla
     final String? homeLogoUrl = homeTeam['logo'];
     final String? awayLogoUrl = awayTeam['logo'];
 
@@ -94,6 +94,7 @@ class CompactMatchCard extends StatelessWidget {
   }
 }
 
+// MatchesScreen widget'ında değişiklik yok, aynı kalabilir.
 class MatchesScreen extends ConsumerWidget {
   final GlobalKey<ScaffoldState> scaffoldKey;
   final VoidCallback onSearchTap;
@@ -133,13 +134,13 @@ class _MatchesView extends ConsumerWidget {
   });
 
   static final List<List<Color>> _gradientPalettes = [
-    [const Color(0xFFE53935), const Color(0xFFC62828)], // Kırmızı
-    [const Color(0xFF1E88E5), const Color(0xFF1565C0)], // Mavi
-    [const Color(0xFF43A047), const Color(0xFF2E7D32)], // Yeşil
-    [const Color(0xFF8E24AA), const Color(0xFF6A1B9A)], // Mor
-    [const Color(0xFF00ACC1), const Color(0xFF00838F)], // Turkuaz
-    [const Color(0xFFFDD835), const Color(0xFFF9A825)], // Sarı
-    [const Color(0xFF3949AB), const Color(0xFF283593)], // İndigo
+    [const Color(0xFFE53935), const Color(0xFFC62828)],
+    [const Color(0xFF1E88E5), const Color(0xFF1565C0)],
+    [const Color(0xFF43A047), const Color(0xFF2E7D32)],
+    [const Color(0xFF8E24AA), const Color(0xFF6A1B9A)],
+    [const Color(0xFF00ACC1), const Color(0xFF00838F)],
+    [const Color(0xFFFDD835), const Color(0xFFF9A825)],
+    [const Color(0xFF3949AB), const Color(0xFF283593)],
   ];
 
   @override
@@ -189,7 +190,7 @@ class _MatchesView extends ConsumerWidget {
                           child: Center(child: Text("Canlı maçlar yüklenemedi: ${e.toString()}"))),
                     ),
                     _buildSectionHeader(
-                        context, DateFormat('EEEE, dd MMMM yyyy', 'tr_TR').format(state.selectedDate)),
+                        context, DateFormat('EEEE, dd MMMM y', 'tr_TR').format(state.selectedDate)),
                     state.selectedDateMatches.when(
                       data: (matchesForDate) {
                         final leaguesToShow = state.activeLeagueIds.isEmpty
@@ -252,8 +253,7 @@ class _MatchesView extends ConsumerWidget {
 
     return SliverToBoxAdapter(
       child: SizedBox(
-        // Kart yüksekliğini yeni tasarıma göre ayarla
-        height: 220, 
+        height: 250, 
         child: ListView.builder(
           scrollDirection: Axis.horizontal,
           padding: const EdgeInsets.symmetric(horizontal: 8.0),
@@ -261,8 +261,7 @@ class _MatchesView extends ConsumerWidget {
           itemBuilder: (context, index) {
             final match = matches[index];
             return SizedBox(
-              // Kart genişliğini yeni tasarıma göre ayarla
-              width: MediaQuery.of(context).size.width * 0.45,
+              width: MediaQuery.of(context).size.width * 0.48, 
               child: LiveMatchCardWidget(
                 matchData: match,
                 onTap: () => controller.onViewMatchDetails(context, match),
@@ -274,13 +273,13 @@ class _MatchesView extends ConsumerWidget {
       ),
     );
   }
-
+  
   Widget _buildEmptyLiveCard(BuildContext context) {
     final theme = Theme.of(context);
     return Card(
       elevation: 4,
       margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
-      color: theme.colorScheme.primary.withOpacity(0.8),
+      color: theme.colorScheme.primary.withAlpha(204),
       clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       child: Stack(
@@ -301,7 +300,7 @@ class _MatchesView extends ConsumerWidget {
               "Şu anda canlı karşılaşma bulunmuyor.",
               textAlign: TextAlign.center,
               style: theme.textTheme.bodyLarge?.copyWith(
-                color: Colors.white.withOpacity(0.8),
+                color: Colors.white.withAlpha(204),
                 fontStyle: FontStyle.italic,
               ),
             ),
@@ -333,7 +332,7 @@ class _MatchesView extends ConsumerWidget {
             final List<dynamic> filteredCompetitionGroups = state.availableCompetitions.map((group) {
               final List<dynamic> filteredLeagues =
                   (group['leagues'] as List).where((league) {
-                return (league['name'] as String).toLowerCase().contains(query);
+                return (league['name'] as String?)?.toLowerCase().contains(query) ?? false;
               }).toList();
               if (filteredLeagues.isNotEmpty) {
                 return {...group, 'leagues': filteredLeagues};
@@ -414,9 +413,9 @@ class _MatchesView extends ConsumerWidget {
                               itemCount: filteredCompetitionGroups.length,
                               itemBuilder: (context, index) {
                                 final group = filteredCompetitionGroups[index];
-                                final String groupName = group['groupName'];
+                                final String groupName = group['groupName']?.toString() ?? 'Diğer';
                                 final List<dynamic> leagues = group['leagues'];
-                                final String? flagUrl = group['countryFlag'];
+                                final String? flagUrl = group['countryFlag']?.toString();
                                 final IconData? icon = group['icon'];
                                 return ExpansionTile(
                                   initiallyExpanded: index < 1,
@@ -424,12 +423,13 @@ class _MatchesView extends ConsumerWidget {
                                   title: Text(groupName, style: const TextStyle(fontWeight: FontWeight.bold)),
                                   children: leagues.map<Widget>((competition) {
                                     final id = competition['id'] as int;
-                                    final name = competition['name'] as String;
+                                    final name = competition['name']?.toString() ?? 'Bilinmeyen Lig';
                                     final logo = competition['logo'] as String?;
                                     return CheckboxListTile(
+                                      // HATA DÜZELTMESİ: 'imageUrl' non-nullable olmalı. Null check ile kullanılıyor.
                                       secondary: logo != null
                                           ? CachedNetworkImage(
-                                              imageUrl: logo,
+                                              imageUrl: logo, // Burada '!' operatörü gerekmez, çünkü kontrol edildi
                                               width: 30,
                                               height: 30,
                                               fit: BoxFit.contain,
@@ -526,9 +526,10 @@ class _MatchesView extends ConsumerWidget {
                   ),
                   ...favoriteLeagues.map((league) {
                     final isSelected = state.activeLeagueIds.contains(league['id']);
-                    final String? logoUrl = league['logo'];
+                    final String? logoUrl = league['logo'] as String?;
+                    final String label = league['name']?.toString() ?? 'Lig';
                     return _FilterChip(
-                      label: league['name'],
+                      label: label,
                       logoUrl: logoUrl,
                       isSelected: isSelected,
                       onTap: () => controller.toggleActiveLeagueFilter(league['id']),
@@ -619,14 +620,15 @@ class _FilterChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final String? localLogoUrl = logoUrl; // Hata çözümü için yerel değişkene atama
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 4.0),
       child: RawChip(
         onPressed: onTap,
         selected: isSelected,
         label: Text(label),
-        avatar: logoUrl != null
-            ? CachedNetworkImage(imageUrl: logoUrl!, width: 18, height: 18)
+        avatar: localLogoUrl != null
+            ? CachedNetworkImage(imageUrl: localLogoUrl, width: 18, height: 18)
             : label == "Tümü"
                 ? Icon(Icons.public,
                     size: 18,
@@ -634,7 +636,7 @@ class _FilterChip extends StatelessWidget {
                 : null,
         shape: const StadiumBorder(),
         side: isSelected ? BorderSide.none : BorderSide(color: theme.dividerColor),
-        backgroundColor: theme.colorScheme.surfaceContainerHighest.withOpacity(0.5),
+        backgroundColor: theme.colorScheme.surfaceContainerHighest.withAlpha(128),
         selectedColor: theme.colorScheme.primary,
         labelStyle: TextStyle(
             color: isSelected ? theme.colorScheme.onPrimary : theme.colorScheme.onSurface,

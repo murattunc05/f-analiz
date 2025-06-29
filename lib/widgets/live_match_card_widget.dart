@@ -25,6 +25,9 @@ class LiveMatchCardWidget extends StatelessWidget {
     final textColor = averageLuminance > 0.4 ? Colors.black87 : Colors.white;
 
     final league = matchData['league'];
+    final homeTeam = matchData['teams']['home'];
+    final awayTeam = matchData['teams']['away'];
+    final fixture = matchData['fixture'];
 
     return Card(
       elevation: 4,
@@ -41,9 +44,10 @@ class LiveMatchCardWidget extends StatelessWidget {
               end: Alignment.bottomRight,
             ),
           ),
-          padding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 8.0),
+          padding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 16.0),
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            // DEĞİŞİKLİK: Elemanlar arası boşluğu artırmak için spaceEvenly kullanıldı.
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               // 1. Lig Adı
@@ -58,26 +62,35 @@ class LiveMatchCardWidget extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
               ),
 
-              // 2. Takımlar (Logolar, İsimler ve Skorlar)
+              // 2. Logolar
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _TeamDisplay(
-                    team: matchData['teams']['home'],
+                  _TeamLogo(team: homeTeam, textColor: textColor),
+                  _TeamLogo(team: awayTeam, textColor: textColor),
+                ],
+              ),
+              
+              // 3. Takım İsimleri ve Skorlar
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _TeamScoreRow(
+                    team: homeTeam,
                     score: matchData['goals']['home'],
                     textColor: textColor,
                   ),
-                  _TeamDisplay(
-                    team: matchData['teams']['away'],
+                  const SizedBox(height: 8),
+                  _TeamScoreRow(
+                    team: awayTeam,
                     score: matchData['goals']['away'],
                     textColor: textColor,
                   ),
                 ],
               ),
 
-              // 3. Canlı Etiketi
-              _buildLiveBadge(context, finalGradient.first),
+              // 4. Canlı Etiketi
+              _buildLiveBadge(context, fixture, finalGradient.first),
             ],
           ),
         ),
@@ -86,32 +99,91 @@ class LiveMatchCardWidget extends StatelessWidget {
   }
 
   // 'Canlı' etiketini oluşturan bölüm
-  Widget _buildLiveBadge(BuildContext context, Color badgeTextColor) {
+  Widget _buildLiveBadge(BuildContext context, Map<String, dynamic> fixture, Color badgeTextColor) {
+    final status = fixture['status']['short'];
+    final minute = fixture['status']['elapsed'];
+    String statusText;
+
+    // DEĞİŞİKLİK: Devre arası kontrolü eklendi
+    if (status == 'HT') {
+      statusText = 'D.A';
+    } else if (minute != null) {
+      statusText = "$minute'";
+    } else {
+      statusText = 'Canlı';
+    }
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(30),
       ),
-      child: Text(
-        "Canlı",
-        style: TextStyle(
-          color: badgeTextColor,
-          fontSize: 14,
-          fontWeight: FontWeight.bold,
-        ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // DEĞİŞİKLİK: Canlı olduğunu belirten kırmızı nokta eklendi ve boyutu küçültüldü.
+          Container(
+            width: 7,
+            height: 7,
+            decoration: BoxDecoration(
+              color: Colors.redAccent.shade400,
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 6), // Nokta ile yazı arasına boşluk
+          Text(
+            statusText,
+            style: TextStyle(
+              color: badgeTextColor,
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
       ),
     );
   }
 }
 
-/// Takım logosunu, adını ve skorunu dikey olarak gösteren yardımcı widget.
-class _TeamDisplay extends StatelessWidget {
+/// Sadece takım logosunu gösteren yardımcı widget.
+class _TeamLogo extends StatelessWidget {
+  final Map<String, dynamic> team;
+  final Color textColor;
+
+  const _TeamLogo({required this.team, required this.textColor});
+  
+  @override
+  Widget build(BuildContext context) {
+    final String? logoUrl = team['logo'];
+    return CircleAvatar(
+      radius: 26,
+      // DEĞİŞİKLİK: Yarı saydam arka plan beyaza çevrildi.
+      backgroundColor: Colors.white,
+      child: SizedBox(
+        height: 32,
+        width: 32,
+        child: logoUrl != null
+            ? CachedNetworkImage(
+                imageUrl: logoUrl,
+                fit: BoxFit.contain,
+                placeholder: (context, url) => const SizedBox(),
+                errorWidget: (context, url, error) => Icon(Icons.shield, size: 32, color: Colors.grey.shade600),
+              )
+            : Icon(Icons.shield, size: 32, color: Colors.grey.shade600),
+      ),
+    );
+  }
+}
+
+
+/// Takım adı ve skoru tek bir satırda gösteren yardımcı widget.
+class _TeamScoreRow extends StatelessWidget {
   final Map<String, dynamic> team;
   final dynamic score;
   final Color textColor;
 
-  const _TeamDisplay({
+  const _TeamScoreRow({
     required this.team,
     required this.score,
     required this.textColor,
@@ -119,57 +191,34 @@ class _TeamDisplay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // HATA DÜZELTMESİ: API'den gelen logo URL'sinin null olup olmadığını kontrol et
-    final String? logoUrl = team['logo'];
-
-    return Expanded(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Takım Logosu
-          CircleAvatar(
-            radius: 26,
-            backgroundColor: Colors.white.withOpacity(0.2),
-            child: SizedBox(
-              height: 32,
-              width: 32,
-              child: logoUrl != null
-                  ? CachedNetworkImage(
-                      imageUrl: logoUrl, // Hata bu satırdaydı, null kontrolü eklendi
-                      fit: BoxFit.contain,
-                      placeholder: (context, url) => const SizedBox(),
-                      errorWidget: (context, url, error) => Icon(Icons.shield, size: 32, color: textColor),
-                    )
-                  : Icon(Icons.shield, size: 32, color: textColor),
-            ),
-          ),
-          const SizedBox(height: 8),
-
-          // Takım Adı
-          Text(
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        // Takım Adı (Esnek alan)
+        Expanded(
+          child: Text(
             team['name'] ?? 'Takım',
-            textAlign: TextAlign.center,
-            maxLines: 2,
+            maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
               fontWeight: FontWeight.w600,
               color: textColor,
-              fontSize: 14,
+              fontSize: 15,
             ),
           ),
-          const SizedBox(height: 4),
-          
-          // Skor
-          Text(
-            (score ?? 0).toString(),
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              color: textColor,
-              fontSize: 20,
-            ),
+        ),
+        const SizedBox(width: 10), // İsim ve skor arası boşluk
+        // Skor (Sabit alan)
+        Text(
+          (score ?? 0).toString(),
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: textColor,
+            fontSize: 18,
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
