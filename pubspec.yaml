@@ -29,6 +29,9 @@ dependencies:
   palette_generator: ^0.3.3+4
   flutter_svg: ^2.2.0
   intl: ^0.20.2 
+  
+  # YENİ EKLENEN PAKET
+  timeline_tile: ^2.0.0
 
 dev_dependencies:
   flutter_test:

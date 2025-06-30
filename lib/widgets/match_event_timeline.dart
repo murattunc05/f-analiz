@@ -1,157 +1,221 @@
 // lib/widgets/match_event_timeline.dart
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:timeline_tile/timeline_tile.dart';
 
 class MatchEventTimeline extends StatelessWidget {
   final List<dynamic> events;
-  const MatchEventTimeline({super.key, required this.events});
+  final int homeTeamId;
+
+  const MatchEventTimeline({
+    super.key,
+    required this.events,
+    required this.homeTeamId,
+  });
 
   @override
   Widget build(BuildContext context) {
     if (events.isEmpty) {
-      return const Center(child: Text("Maç özeti için olay verisi bulunmuyor."));
+      return const Center(
+          child: Padding(
+        padding: EdgeInsets.all(24.0),
+        child: Text("Bu maç için kaydedilmiş önemli bir olay bulunmuyor.",
+            textAlign: TextAlign.center),
+      ));
     }
+
+    events.sort((a, b) => (a['time']['elapsed'] as int)
+        .compareTo(b['time']['elapsed'] as int));
+
     return ListView.builder(
-      padding: const EdgeInsets.all(16.0),
+      padding: const EdgeInsets.symmetric(vertical: 16.0),
       itemCount: events.length,
       itemBuilder: (context, index) {
-        return _EventTile(event: events[index]);
+        final event = events[index];
+        final isHomeEvent = event['team']['id'] == homeTeamId;
+
+        return TimelineTile(
+          alignment: TimelineAlign.center,
+          isFirst: index == 0,
+          isLast: index == events.length - 1,
+          startChild:
+              isHomeEvent ? _EventCard(event: event, isHome: true) : null,
+          endChild:
+              !isHomeEvent ? _EventCard(event: event, isHome: false) : null,
+          indicatorStyle: IndicatorStyle(
+            width: 50,
+            height: 50,
+            indicator: _TimeIndicator(
+                time: event['time']['elapsed'].toString(),
+                extra: event['time']['extra']?.toString()),
+            padding: const EdgeInsets.all(8),
+          ),
+          beforeLineStyle: LineStyle(
+            color: Theme.of(context).dividerColor,
+            thickness: 2,
+          ),
+          afterLineStyle: LineStyle(
+            color: Theme.of(context).dividerColor,
+            thickness: 2,
+          ),
+        );
       },
     );
   }
 }
 
-class _EventTile extends StatelessWidget {
-  final Map<String, dynamic> event;
-  const _EventTile({required this.event});
+class _TimeIndicator extends StatelessWidget {
+  final String time;
+  final String? extra;
 
-  // DEĞİŞİKLİK: Türkçeleştirme ve ikon güncellemeleri
-  Widget _getEventIcon(String type, String detail) {
+  const _TimeIndicator({required this.time, this.extra});
+
+  @override
+  Widget build(BuildContext context) {
+    String displayTime = "$time'";
+    if (extra != null && extra != '0') {
+      displayTime += "+$extra";
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: Theme.of(context).colorScheme.primary.withOpacity(0.15),
+        border: Border.all(
+          color: Theme.of(context).colorScheme.primary,
+          width: 2,
+        ),
+      ),
+      child: Center(
+        child: Text(
+          displayTime,
+          style: TextStyle(
+            color: Theme.of(context).colorScheme.primary,
+            fontSize: 12,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _EventCard extends StatelessWidget {
+  final Map<String, dynamic> event;
+  final bool isHome;
+
+  const _EventCard({required this.event, required this.isHome});
+
+  Map<String, dynamic> _getEventVisuals(
+      String type, String detail, BuildContext context) {
     switch (type) {
       case 'Goal':
-        return Icon(Icons.sports_soccer, color: Colors.green.shade600, size: 28);
+        if (detail == 'Penalty') {
+          return {'icon': Icons.sports_soccer, 'color': Colors.green.shade700};
+        } else if (detail == 'Own Goal') {
+          return {'icon': Icons.sports_soccer, 'color': Colors.red.shade800};
+        }
+        return {'icon': Icons.sports_soccer, 'color': Colors.green.shade600};
       case 'Card':
         if (detail == 'Yellow Card') {
-          return Container(width: 16, height: 22, color: Colors.yellow.shade600,
-            child: const Center(child: Text('S', style: TextStyle(fontSize: 10, color: Colors.black54, fontWeight: FontWeight.bold)))
-          );
-        } else {
-          return Container(width: 16, height: 22, color: Colors.red.shade600,
-            child: const Center(child: Text('K', style: TextStyle(fontSize: 10, color: Colors.white, fontWeight: FontWeight.bold)))
-          );
+          return {
+            'icon': Icons.style,
+            'color': Colors.yellow.shade700
+          };
         }
+        return {
+          'icon': Icons.style,
+          'color': Colors.red.shade700
+        };
       case 'subst':
-        return Icon(Icons.swap_horiz_rounded, color: Colors.blue.shade600, size: 28);
+        return {
+          'icon': Icons.swap_horiz_rounded,
+          'color': Colors.blue.shade600
+        };
       default:
-        return Icon(Icons.info_outline, color: Colors.grey.shade600, size: 28);
+        return {
+          'icon': Icons.info_outline,
+          'color': Theme.of(context).disabledColor
+        };
     }
   }
 
   String _getDetailText(String type, String? detail) {
-    if (type == 'Goal') {
-      if (detail == 'Normal Goal') return 'Gol';
-      if (detail == 'Penalty') return 'Penaltı Golü';
-      if (detail == 'Own Goal') return 'Kendi Kalesine Gol';
+    switch (type) {
+      case 'Goal':
+        if (detail == 'Normal Goal') return 'Gol';
+        if (detail == 'Penalty') return 'Penaltı Golü';
+        if (detail == 'Own Goal') return 'K.K Gol';
+        return 'Gol';
+      case 'Card':
+        return detail ?? 'Kart';
+      case 'subst':
+        return 'Değişiklik';
+      default:
+        return detail ?? '';
     }
-    if (type == 'Card') {
-      if (detail == 'Yellow Card') return 'Sarı Kart';
-      if (detail == 'Red Card') return 'Kırmızı Kart';
-    }
-    if (type == 'subst') {
-      return 'Oyuncu Değişikliği';
-    }
-    return detail ?? '';
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final time = event['time']['elapsed'];
-    final teamLogo = event['team']['logo'];
-    final teamName = event['team']['name'];
-    final playerName = event['player']['name'] ?? 'N/A';
-    final assistName = event['assist']['name'];
-    final type = event['type'];
-    final detail = event['detail'];
+    final visuals = _getEventVisuals(
+        event['type'], event['detail'] ?? '', context);
+    
+    // GÜNCELLENDİ: Oyuncu değişikliği için doğru verileri alıyoruz
+    final isSubstitution = event['type'] == 'subst';
+    final playerOut = event['player']['name'] ?? 'Bilinmiyor';
+    final playerIn = event['assist']['name']; // 'assist' objesi giren oyuncuyu tutuyor.
+    
+    final typeText = _getDetailText(event['type'], event['detail']);
 
-    return IntrinsicHeight(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          SizedBox(
-            width: 60,
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                Container(width: 1.5, color: theme.dividerColor),
-                Positioned(
-                  top: 24,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: theme.scaffoldBackgroundColor,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: theme.dividerColor)
-                    ),
-                    child: Text("$time'"),
-                  ),
-                )
-              ],
-            ),
-          ),
-          
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 12.0),
-              child: Card(
-                elevation: 0.5,
-                child: Padding(
-                  padding: const EdgeInsets.all(12.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          if (teamLogo != null)
-                            CachedNetworkImage(imageUrl: teamLogo, width: 24, height: 24),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              teamName,
-                              style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
-                            ),
-                          ),
-                          Text(
-                            _getDetailText(type, detail),
-                            style: theme.textTheme.bodyMedium?.copyWith(fontStyle: FontStyle.italic, color: theme.colorScheme.primary),
-                          ),
-                        ],
-                      ),
-                      const Divider(height: 16),
-                      Row(
-                        children: [
-                           _getEventIcon(type, detail),
-                           const SizedBox(width: 12),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(playerName, style: theme.textTheme.bodyLarge),
-                              if (assistName != null)
-                                Text(
-                                  "Asist: $assistName",
-                                  style: theme.textTheme.bodyMedium?.copyWith(color: Colors.grey.shade600),
-                                ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 12.0),
+      child: Card(
+        elevation: 2.0,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        child: Padding(
+          padding: const EdgeInsets.all(12.0),
+          child: Column(
+            crossAxisAlignment:
+                isHome ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (!isHome) ...[
+                    Icon(visuals['icon'], color: visuals['color'], size: 20),
+                    const SizedBox(width: 8),
+                  ],
+                  Text(typeText,
+                      style: theme.textTheme.bodyMedium
+                          ?.copyWith(fontWeight: FontWeight.bold)),
+                  if (isHome) ...[
+                    const SizedBox(width: 8),
+                    Icon(visuals['icon'], color: visuals['color'], size: 20),
+                  ],
+                ],
               ),
-            ),
-          )
-        ],
+              const Divider(height: 10),
+              // GÜNCELLENDİ: Oyuncu değişikliği ise farklı, değilse farklı gösterim
+              if (isSubstitution)
+                Column(
+                  crossAxisAlignment: isHome ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                  children: [
+                    Text("Çıkan: $playerOut", style: theme.textTheme.bodyLarge?.copyWith(color: theme.colorScheme.onSurface.withOpacity(0.7))),
+                    if (playerIn != null)
+                      Text("Giren: $playerIn", style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold)),
+                  ],
+                )
+              else
+                Text(
+                  playerOut, // Değişiklik değilse ana oyuncu
+                  style: theme.textTheme.bodyLarge,
+                  textAlign: isHome ? TextAlign.end : TextAlign.start,
+                ),
+            ],
+          ),
+        ),
       ),
     );
   }
