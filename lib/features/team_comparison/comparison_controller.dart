@@ -1,9 +1,15 @@
 // lib/features/team_comparison/comparison_controller.dart
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data_service.dart';
 import '../../services/team_name_service.dart';
 import '../single_team_analysis/single_team_controller.dart';
+
+// YENİ: copyWith metodunu daha temiz hale getirmek için ValueGetter kullanacağız.
+// Bu, bir değerin "değiştirilmedi" durumu ile "null olarak ayarlandı" durumu
+// arasındaki farkı anlamamızı sağlar.
+typedef ValueGetter<T> = T Function();
 
 class ComparisonState {
   final String? selectedLeague;
@@ -29,32 +35,31 @@ class ComparisonState {
     this.errorMessage,
   });
 
-  // DÜZELTME: copyWith metodu sadeleştirildi ve ValueGetter kaldırıldı.
+  // --- REFAKTE EDİLMİŞ copyWith METODU ---
+  // Artık state'i null yapmak için boolean flag'ler kullanmıyoruz.
+  // Bu sayede metot daha temiz ve daha az hata yapmaya yatkın.
   ComparisonState copyWith({
-    String? selectedLeague,
-    String? originalTeam1,
-    String? originalTeam2,
-    bool setToNull = false, // Hangi alanların null yapılacağını kontrol etmek için flag'ler
-    bool team1ToNull = false,
-    bool team2ToNull = false,
+    ValueGetter<String?>? selectedLeague,
+    ValueGetter<String?>? originalTeam1,
+    ValueGetter<String?>? originalTeam2,
     AsyncValue<Map<String, dynamic>?>? team1Stats,
     AsyncValue<Map<String, dynamic>?>? team2Stats,
     AsyncValue<Map<String, dynamic>?>? comparisonResult,
     List<String>? availableTeams,
     bool? isLoadingTeams,
-    String? errorMessage,
-    bool clearErrorMessage = false,
+    ValueGetter<String?>? errorMessage,
   }) {
     return ComparisonState(
-      selectedLeague: setToNull ? null : selectedLeague ?? this.selectedLeague,
-      originalTeam1: team1ToNull ? null : originalTeam1 ?? this.originalTeam1,
-      originalTeam2: team2ToNull ? null : originalTeam2 ?? this.originalTeam2,
+      // Bir değer sağlanmışsa (null bile olsa), onu kullan. Sağlanmamışsa eskisini koru.
+      selectedLeague: selectedLeague != null ? selectedLeague() : this.selectedLeague,
+      originalTeam1: originalTeam1 != null ? originalTeam1() : this.originalTeam1,
+      originalTeam2: originalTeam2 != null ? originalTeam2() : this.originalTeam2,
       team1Stats: team1Stats ?? this.team1Stats,
       team2Stats: team2Stats ?? this.team2Stats,
       comparisonResult: comparisonResult ?? this.comparisonResult,
       availableTeams: availableTeams ?? this.availableTeams,
       isLoadingTeams: isLoadingTeams ?? this.isLoadingTeams,
-      errorMessage: clearErrorMessage ? null : errorMessage ?? this.errorMessage,
+      errorMessage: errorMessage != null ? errorMessage() : this.errorMessage,
     );
   }
 }
@@ -65,43 +70,48 @@ class ComparisonController extends StateNotifier<ComparisonState> {
 
   final DataService _dataService;
 
-  // DÜZELTME: Controller metotları yeni copyWith yapısına göre güncellendi.
+  // --- REFAKTE EDİLMİŞ CONTROLLER METOTLARI ---
+  // Metotlar artık daha basit ve state güncellemeleri daha net.
   void selectLeague(String? league) {
     if (league != state.selectedLeague) {
+      // Yeni bir lig seçildiğinde, ilgili tüm diğer state'leri sıfırla.
       state = state.copyWith(
-        selectedLeague: league,
-        setToNull: league == null, // Eğer gelen lig null ise, state'i de null yap.
-        team1ToNull: true, // Lig değişince takımlar sıfırlanır
-        team2ToNull: true,
+        selectedLeague: () => league,
+        originalTeam1: () => null,
+        originalTeam2: () => null,
         availableTeams: [],
         team1Stats: const AsyncValue.data(null),
         team2Stats: const AsyncValue.data(null),
         comparisonResult: const AsyncValue.data(null),
+        errorMessage: () => null, // Hata mesajını temizle
       );
     }
   }
 
   void selectTeam({required int teamNumber, required String? teamName}) {
     if (teamNumber == 1) {
+      // Sadece takım 1'i ve onunla ilgili sonuçları güncelle/sıfırla.
       state = state.copyWith(
-        originalTeam1: teamName, 
-        team1ToNull: teamName == null,
+        originalTeam1: () => teamName,
         team1Stats: const AsyncValue.data(null), 
-        comparisonResult: const AsyncValue.data(null)
+        comparisonResult: const AsyncValue.data(null),
+        errorMessage: () => null,
       );
     } else {
+      // Sadece takım 2'yi ve onunla ilgili sonuçları güncelle/sıfırla.
       state = state.copyWith(
-        originalTeam2: teamName, 
-        team2ToNull: teamName == null,
+        originalTeam2: () => teamName,
         team2Stats: const AsyncValue.data(null), 
-        comparisonResult: const AsyncValue.data(null)
+        comparisonResult: const AsyncValue.data(null),
+        errorMessage: () => null,
       );
     }
   }
 
-  // Geri kalan metotlar aynı, çünkü copyWith'e değil, state'in kendisine güveniyorlar.
+  // Bu metotların geri kalanında değişiklik yapmaya gerek yok, çünkü
+  // zaten state'i doğrudan güncelliyorlardı.
   Future<void> fetchAvailableTeams(String league, String season) async {
-    state = state.copyWith(isLoadingTeams: true, availableTeams: [], clearErrorMessage: true);
+    state = state.copyWith(isLoadingTeams: true, availableTeams: [], errorMessage: () => null);
     try {
       final leagueUrl = DataService.getLeagueUrl(league, season);
       if (leagueUrl == null) throw Exception("Lig URL'si bulunamadı.");
@@ -115,13 +125,16 @@ class ComparisonController extends StateNotifier<ComparisonState> {
       
       state = state.copyWith(availableTeams: teams, isLoadingTeams: false);
     } catch (e) {
-      state = state.copyWith(isLoadingTeams: false, errorMessage: "Takım listesi alınamadı: ${e.toString()}");
+      state = state.copyWith(
+        isLoadingTeams: false, 
+        errorMessage: () => "Takım listesi alınamadı: ${e.toString()}"
+      );
     }
   }
   
   Future<void> fetchComparisonStats(String season) async {
     if (state.selectedLeague == null || state.originalTeam1 == null || state.originalTeam2 == null) {
-      state = state.copyWith(errorMessage: "Lütfen lig ve iki takımı da seçin.");
+      state = state.copyWith(errorMessage: () => "Lütfen lig ve iki takımı da seçin.");
       return;
     }
     
@@ -129,7 +142,7 @@ class ComparisonController extends StateNotifier<ComparisonState> {
       team1Stats: const AsyncValue.loading(),
       team2Stats: const AsyncValue.loading(),
       comparisonResult: const AsyncValue.loading(),
-      clearErrorMessage: true,
+      errorMessage: () => null,
     );
 
     try {
@@ -169,7 +182,7 @@ class ComparisonController extends StateNotifier<ComparisonState> {
         team1Stats: AsyncValue.error(e, st),
         team2Stats: AsyncValue.error(e, st),
         comparisonResult: AsyncValue.error(e, st),
-        errorMessage: e.toString(),
+        errorMessage: () => e.toString(),
       );
     }
   }

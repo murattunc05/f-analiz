@@ -1,11 +1,11 @@
 // lib/features/matches/matches_controller.dart
-import 'package:flutter/material.dart'; // foundation.dart yerine bunu kullanmak yeterli
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../services/api_service.dart';
 import '../../match_detail_screen.dart';
 
-// MatchDetailState ve MatchesState sınıfları aynı kalıyor...
+// MatchDetailState sınıfı aynı kalıyor...
 class MatchDetailState {
   final AsyncValue<Map<String, dynamic>> fixtureDetails;
   const MatchDetailState({ this.fixtureDetails = const AsyncValue.loading() });
@@ -23,15 +23,18 @@ class MatchesState {
   final List<dynamic> availableCompetitions;
   final Set<int> selectedCompetitionIds;
   final bool isLoadingCompetitions;
+  final DateTime? lastLiveRefreshTimestamp;
 
   const MatchesState({
-    this.liveMatches = const AsyncValue.loading(),
+    // DEĞİŞİKLİK: Canlı maçlar başlangıçta boş bir liste olarak ayarlandı.
+    this.liveMatches = const AsyncValue.data([]),
     this.selectedDateMatches = const AsyncValue.loading(),
     this.activeLeagueIds = const {},
     required this.selectedDate,
     this.availableCompetitions = const [],
     this.selectedCompetitionIds = const {},
     this.isLoadingCompetitions = true,
+    this.lastLiveRefreshTimestamp,
   });
 
   MatchesState copyWith({
@@ -42,6 +45,7 @@ class MatchesState {
     List<dynamic>? availableCompetitions,
     Set<int>? selectedCompetitionIds,
     bool? isLoadingCompetitions,
+    DateTime? lastLiveRefreshTimestamp,
   }) {
     return MatchesState(
       liveMatches: liveMatches ?? this.liveMatches,
@@ -51,6 +55,7 @@ class MatchesState {
       availableCompetitions: availableCompetitions ?? this.availableCompetitions,
       selectedCompetitionIds: selectedCompetitionIds ?? this.selectedCompetitionIds,
       isLoadingCompetitions: isLoadingCompetitions ?? this.isLoadingCompetitions,
+      lastLiveRefreshTimestamp: lastLiveRefreshTimestamp ?? this.lastLiveRefreshTimestamp,
     );
   }
 }
@@ -64,8 +69,11 @@ class MatchesController extends StateNotifier<MatchesState> {
   final ApiService _apiService;
   final SharedPreferences _prefs;
   static const String _kSelectedLeaguesKey = 'selected_league_ids_v4';
+  
+  static const Duration _liveRefreshCooldown = Duration(minutes: 1);
 
   Future<void> _initialize() async {
+    // Uygulama açılışında artık canlı maçlar çekilmeyecek, sadece diğer veriler.
     final competitionsFuture = fetchAvailableCompetitions();
     final initialFetchFuture = fetchMatches(isInitialLoad: true);
     await Future.wait([competitionsFuture, initialFetchFuture]);
@@ -94,19 +102,33 @@ class MatchesController extends StateNotifier<MatchesState> {
   }
 
   Future<void> fetchMatches({bool isInitialLoad = false, bool isRefresh = false}) async {
+    final now = DateTime.now();
+
     if (isRefresh) {
+      if (state.lastLiveRefreshTimestamp != null &&
+          now.difference(state.lastLiveRefreshTimestamp!) < _liveRefreshCooldown) {
+        debugPrint("Canlı maç yenileme isteği zaman aşımı nedeniyle engellendi.");
+        return; 
+      }
       state = state.copyWith(liveMatches: const AsyncValue.loading());
-    } else {
+    } else if (isInitialLoad) {
+      // Sadece başlangıç yüklemesinde günün maçlarını çek.
       state = state.copyWith(selectedDateMatches: const AsyncValue.loading());
     }
 
     try {
-      if (isRefresh || isInitialLoad) {
-        // DEĞİŞİKLİK: _get -> get
-        final liveMatchesData = await _apiService.get('fixtures?live=all');
-        state = state.copyWith(liveMatches: AsyncValue.data(liveMatchesData));
+      // --- DEĞİŞİKLİK BURADA ---
+      // Canlı maç sorgusu artık sadece manuel yenileme (isRefresh = true) ile tetikleniyor.
+      if (isRefresh) {
+        final liveMatchesData = await _apiService.get('fixtures?live=all', enableCache: false);
+        state = state.copyWith(
+          liveMatches: AsyncValue.data(liveMatchesData), 
+          lastLiveRefreshTimestamp: now,
+        );
       }
       
+      // Günün maçları, başlangıçta veya tarih değiştirildiğinde çekilir.
+      // Manuel yenileme sırasında bu blok çalışmaz.
       if (isInitialLoad || !isRefresh) {
         final selectedDateMatchesData = await _apiService.getMatchesForDate(state.selectedDate);
         state = state.copyWith(selectedDateMatches: AsyncValue.data(selectedDateMatchesData));
@@ -117,7 +139,9 @@ class MatchesController extends StateNotifier<MatchesState> {
          state = state.copyWith(liveMatches: AsyncValue.error(e, st));
        } else {
          state = state.copyWith(
-           liveMatches: isInitialLoad ? AsyncValue.error(e, st) : state.liveMatches,
+           // Başlangıç yüklemesinde hata olursa canlı maçlar boş kalır,
+           // günün maçları hata durumuna geçer.
+           liveMatches: isInitialLoad ? const AsyncValue.data([]) : state.liveMatches,
            selectedDateMatches: AsyncValue.error(e, st)
          );
        }
@@ -128,7 +152,8 @@ class MatchesController extends StateNotifier<MatchesState> {
     final newDateWithoutTime = DateTime(newDate.year, newDate.month, newDate.day);
     if(newDateWithoutTime.isAtSameMomentAs(state.selectedDate)) return;
     
-    state = state.copyWith(selectedDate: newDateWithoutTime);
+    // Tarih değiştiğinde sadece günün maçlarını çek, canlı maçlara dokunma.
+    state = state.copyWith(selectedDate: newDateWithoutTime, selectedDateMatches: const AsyncValue.loading());
     fetchMatches();
   }
 
@@ -188,7 +213,7 @@ class MatchesController extends StateNotifier<MatchesState> {
       selectedCompetitionIds: newIds,
       activeLeagueIds: {},
     );
-    // Yeni ligler seçildiğinde maçları yeniden çek
+    // Favori ligler değiştiğinde sadece günün maçlarını yeniden çek.
     fetchMatches();
   }
 

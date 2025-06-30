@@ -8,6 +8,25 @@ import '../../data_service.dart';
 import '../../services/team_name_service.dart';
 import '../single_team_analysis/single_team_controller.dart';
 
+// Liglerin genel kalitesini ve rekabet seviyesini belirten basit bir harita.
+const Map<String, String> _leagueQualityMap = {
+  "İngiltere - Premier Lig": "Top Seviye",
+  "İspanya - La Liga": "Top Seviye",
+  "Almanya - Bundesliga": "Top Seviye",
+  "İtalya - Serie A": "Top Seviye",
+  "Fransa - Ligue 1": "Yüksek Seviye",
+  "Hollanda - Eredivisie": "Yüksek Seviye",
+  "Portekiz - Premier Lig": "Yüksek Seviye",
+  "Türkiye - Süper Lig": "Rekabetçi Orta Düzey",
+  "Belçika - Pro Lig": "Rekabetçi Orta Düzey",
+  "İngiltere - Championship": "Rekabetçi Üst Düzey",
+  "Almanya - Bundesliga 2": "Rekabetçi Üst Düzey",
+  "İtalya - Serie B": "Rekabetçi Üst Düzey",
+  "İskoçya - Premiership": "Orta Düzey",
+  "Yunanistan - Süper Lig": "Orta Düzey",
+};
+
+
 class TeamComparisonData {
   final List<String> availableTeams;
   final bool isLoadingTeams;
@@ -297,8 +316,10 @@ class AdvancedComparisonController
   }
 
   Future<void> generateAiAnalysis() async {
-    if (state.team1Data.stats.value == null ||
-        state.team2Data.stats.value == null) {
+    final team1StatsValue = state.team1Data.stats.value;
+    final team2StatsValue = state.team2Data.stats.value;
+
+    if (team1StatsValue == null || team2StatsValue == null) {
       state = state.copyWith(
           aiCommentary: AsyncValue.error(
               "AI analizi için önce takımları karşılaştırın.",
@@ -310,9 +331,12 @@ class AdvancedComparisonController
 
     try {
       final String commentary = await _generateAiCommentary(
-          state.team1Data.stats.value!,
-          state.team2Data.stats.value!,
-          state.h2hStats);
+        stats1: team1StatsValue,
+        stats2: team2StatsValue,
+        h2hStats: state.h2hStats,
+        league1: state.selectedLeague1!,
+        league2: state.selectedLeague2!,
+      );
       state = state.copyWith(aiCommentary: AsyncValue.data(commentary));
     } catch (e, st) {
       state = state.copyWith(aiCommentary: AsyncValue.error(e, st));
@@ -491,8 +515,13 @@ class AdvancedComparisonController
     }
   }
 
-  Future<String> _generateAiCommentary(Map<String, dynamic> stats1,
-      Map<String, dynamic> stats2, Map<String, int> h2hStats) async {
+  Future<String> _generateAiCommentary({
+    required Map<String, dynamic> stats1,
+    required Map<String, dynamic> stats2,
+    required Map<String, int> h2hStats,
+    required String league1,
+    required String league2,
+  }) async {
     if (_apiKey.isEmpty) {
       throw Exception(
           "API Anahtarı Eksik. Lütfen controller dosyasında _apiKey değişkenini ayarlayın.");
@@ -500,49 +529,45 @@ class AdvancedComparisonController
 
     final String team1Name = stats1['displayTeamName'] ?? 'Takım 1';
     final String team2Name = stats2['displayTeamName'] ?? 'Takım 2';
-    final int matchCount1 = stats1['oynananMacSayisi'] ?? 0;
-    final int matchCount2 = stats2['oynananMacSayisi'] ?? 0;
-
-    final String avgGoalsAgainst1 = matchCount1 > 0
-        ? ((stats1['yedigi'] as num) / matchCount1).toStringAsFixed(2)
-        : "0.00";
-    final String avgGoalsAgainst2 = matchCount2 > 0
-        ? ((stats2['yedigi'] as num) / matchCount2).toStringAsFixed(2)
-        : "0.00";
-
-
+    
     final int team1H2HWins = h2hStats['team1Wins'] ?? 0;
     final int team2H2HWins = h2hStats['team2Wins'] ?? 0;
     final int h2hDraws = h2hStats['draws'] ?? 0;
     final int totalH2HMatches = team1H2HWins + team2H2HWins + h2hDraws;
 
-    // YENİ PROMPT: Daha detaylı, istatistiksel ve bahis diliyle yorumlar isteyen, modern bir format.
-    String prompt = """
-    Bir uzman futbol analisti ve veri bilimcisi olarak, sağlanan istatistiklere dayanarak $team1Name ve $team2Name arasındaki maç için detaylı, profesyonel ve modern bir Markdown formatında analiz oluştur. Analiz, aşağıdaki bölümleri içermelidir ve dil akıcı, net olmalıdır.
+    final String league1Quality = _leagueQualityMap[league1] ?? "Bilinmiyor";
+    final String league2Quality = _leagueQualityMap[league2] ?? "Bilinmiyor";
+    
+    final String avgGoalsAgainst1 = (stats1['oynananMacSayisi'] > 0 ? (stats1['yedigi'] as num) / stats1['oynananMacSayisi'] : 0).toStringAsFixed(2);
+    final String avgGoalsAgainst2 = (stats2['oynananMacSayisi'] > 0 ? (stats2['yedigi'] as num) / stats2['oynananMacSayisi'] : 0).toStringAsFixed(2);
 
-    İstatistikler:
-    - Takım 1 ($team1Name): Son $matchCount1 maç, G/B/M: ${stats1['galibiyet'] ?? 0}/${stats1['beraberlik'] ?? 0}/${stats1['maglubiyet'] ?? 0}, Gol Ort: ${stats1['macBasiOrtalamaGol'] ?? 'N/A'}, Yediği Gol Ort: $avgGoalsAgainst1, KG Var: %${stats1['kgVarYuzdesi'] ?? 'N/A'}, Korner Ort: ${stats1['ortalamaKorner'] ?? 'N/A'}
-    - Takım 2 ($team2Name): Son $matchCount2 maç, G/B/M: ${stats2['galibiyet'] ?? 0}/${stats2['beraberlik'] ?? 0}/${stats2['maglubiyet'] ?? 0}, Gol Ort: ${stats2['macBasiOrtalamaGol'] ?? 'N/A'}, Yediği Gol Ort: $avgGoalsAgainst2, KG Var: %${stats2['kgVarYuzdesi'] ?? 'N/A'}, Korner Ort: ${stats2['ortalamaKorner'] ?? 'N/A'}
-    - H2H: Toplam $totalH2HMatches maç, $team1Name Galibiyeti: $team1H2HWins, $team2Name Galibiyeti: $team2H2HWins, Beraberlik: $h2hDraws
+    // YENİ: Daha yapısal ve kullanıcı dostu bir yorum isteyen prompt.
+    String prompt = """
+    Bir uzman futbol analisti ve veri bilimcisi olarak, sağlanan istatistiklere dayanarak $team1Name ve $team2Name arasındaki maç için detaylı, profesyonel ve modern bir Markdown formatında analiz oluştur. Analiz, aşağıdaki bölümleri içermelidir ve dil akıcı, net ve maddeler halinde olmalıdır.
+
+    Veriler:
+    - Takım 1: **$team1Name** (Lig: $league1, Lig Kalitesi: **$league1Quality**)
+      - Son Maçlar: ${stats1['oynananMacSayisi'] ?? 'N/A'}, G/B/M: ${stats1['galibiyet'] ?? 0}/${stats1['beraberlik'] ?? 0}/${stats1['maglubiyet'] ?? 0}, Gol Ort: ${stats1['macBasiOrtalamaGol'] ?? 'N/A'}, Yediği Gol Ort: $avgGoalsAgainst1
+    - Takım 2: **$team2Name** (Lig: $league2, Lig Kalitesi: **$league2Quality**)
+      - Son Maçlar: ${stats2['oynananMacSayisi'] ?? 'N/A'}, G/B/M: ${stats2['galibiyet'] ?? 0}/${stats2['beraberlik'] ?? 0}/${stats2['maglubiyet'] ?? 0}, Gol Ort: ${stats2['macBasiOrtalamaGol'] ?? 'N/A'}, Yediği Gol Ort: $avgGoalsAgainst2
+    - Aralarındaki Maçlar (H2H): Toplam $totalH2HMatches maç, $team1Name Galibiyeti: $team1H2HWins, $team2Name Galibiyeti: $team2H2HWins, Beraberlik: $h2hDraws
 
     İstenen Çıktı Formatı (Markdown):
     ### Temel Beklentiler
-    - **Maç Sonucu Tahmini:** (Net tahminin: "$team1Name Kazanır", "$team2Name Kazanır" veya "Beraberlik")
+    - **Maç Sonucu:** (Net tahminin: "$team1Name Kazanır", "$team2Name Kazanır" veya "Beraberlik")
     - **Güven Seviyesi:** (Tahminine olan güvenin: "Düşük", "Orta", "Yüksek")
 
     ### İstatistiksel Beklentiler
     - **Toplam Gol:** (Net beklentin: "2.5 Gol Altı", "2.5 Gol Üstü", veya "2-3 Gol Arası" gibi)
     - **Karşılıklı Gol (KG):** (Net beklentin: "KG Var" veya "KG Yok")
-    - **Toplam Korner:** (Net beklentin: "8.5 Üstü", "10.5 Altı" gibi baremli bir yorum)
-    - **Toplam Kart:** (Net beklentin: "3.5 Üstü", "4.5 Altı" gibi baremli bir yorum)
 
-    ### Maç Yorumu ve Kilit Noktalar
-    - (Takımların mevcut form durumları ve oyun stilleri hakkında 1-2 cümlelik profesyonel bir yorum.)
-    - (H2H istatistiklerinin maça olası etkisini belirten kısa bir not.)
-    - (Maçın kaderini etkileyebilecek kilit bir istatistik veya oyuncu grubuna vurgu yap.)
+    ### Detaylı Yorum
+    - **Oyun Stilleri:** (Takımların genel oyun stillerini (örn: baskılı, kontra atak, topa sahip olma) 1-2 cümleyle karşılaştır.)
+    - **Kilit Faktör:** (Maçın sonucunu en çok etkilemesi beklenen faktör nedir? (örn: $team1Name'ın hücum gücü, $team2Name'in savunma direnci, orta saha mücadelesi vb.))
+    - **Lig Kalitesi Etkisi:** (EĞER LİGLER FARKLIYSA, bu faktörün maça nasıl etki edeceğini 1-2 cümleyle belirt. Örneğin, '$league1Quality' liginin temposu ile '$league2Quality' liginin fiziksel mücadelesi arasındaki fark.)
 
     ### Öne Çıkan Tahmin
-    - (Tüm analizi özetleyen, en güvendiğin tek ve net bir tahmin. Örneğin: "**Maçın 9.5 Korner Üstü bitmesi bekleniyor.**" veya "**Karşılıklı Gol Var seçeneği öne çıkıyor.**")
+    - (Tüm analizi özetleyen, en güvendiğin tek ve net bir tahmin. Örneğin: "**Maçın 9.5 Korner Üstü bitmesi bekleniyor.**" veya "**$team1Name galibiyetine daha yakın görünüyor.**")
     """;
     
     try {

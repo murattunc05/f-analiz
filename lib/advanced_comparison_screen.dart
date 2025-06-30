@@ -7,7 +7,6 @@ import 'package:futbol_analiz_app/widgets/league_selection_dialog_content.dart';
 import 'package:futbol_analiz_app/widgets/team_selection_dialog_content.dart';
 import 'package:futbol_analiz_app/main.dart';
 import 'package:futbol_analiz_app/utils/dialog_utils.dart';
-// import 'package:flutter_spinkit/flutter_spinkit.dart'; // DÜZELTME: Kullanılmadığı için kaldırıldı.
 import 'package:futbol_analiz_app/widgets/team_setup_card_widget.dart';
 import 'package:futbol_analiz_app/widgets/comparison_stats_card_widget.dart';
 import 'package:futbol_analiz_app/widgets/detailed_match_list_content.dart';
@@ -51,7 +50,6 @@ class AdvancedComparisonScreen extends ConsumerWidget {
     Color(0xFF46263F)
   ];
 
-  // DÜZELTME: İsimlendirme standardına uygun hale getirildi.
   Widget _gradientBorderCard(
       {required Widget child,
       required BuildContext context,
@@ -279,12 +277,10 @@ class AdvancedComparisonScreen extends ConsumerWidget {
         team1Stats.value != null &&
         team2Stats.value != null;
     
-    // DÜZELTME: Null-safe kontrol eklendi.
     final bool showAiButton = showResults &&
         (controllerState.aiCommentary.asData?.value?.isEmpty ?? true) &&
         !controllerState.aiCommentary.isLoading;
     
-    // DÜZELTME: Null-safe kontrol eklendi.
     final bool showAiCard = showResults &&
         (controllerState.aiCommentary.isLoading ||
             (controllerState.aiCommentary.hasValue &&
@@ -300,7 +296,6 @@ class AdvancedComparisonScreen extends ConsumerWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // DÜZELTME: Fonksiyon adı değiştirildi.
               _gradientBorderCard(
                 context: context,
                 gradientColors: _setupCardGradient,
@@ -317,7 +312,6 @@ class AdvancedComparisonScreen extends ConsumerWidget {
                       _showSeasonSelectionDialogForTeam(context, ref, 1),
                 ),
               ),
-              // DÜZELTME: Fonksiyon adı değiştirildi.
               _gradientBorderCard(
                 context: context,
                 gradientColors: _setupCardGradient,
@@ -413,7 +407,6 @@ class AdvancedComparisonScreen extends ConsumerWidget {
             child: Column(
               children: [
                 if (showAiButton)
-                  // DÜZELTME: Fonksiyon adı değiştirildi.
                   _gradientBorderCard(
                       context: context,
                       gradientColors: _aiCardGradient,
@@ -457,11 +450,9 @@ class AdvancedComparisonScreen extends ConsumerWidget {
                 if (showAiCard)
                   AiAnalysisCard(
                     aiCommentary: controllerState.aiCommentary,
-                    gradientColors: _aiCardGradient,
                   ),
                 if (showResults) ...[
                   if (controllerState.h2hStats.isNotEmpty)
-                    // DÜZELTME: Fonksiyon adı değiştirildi.
                     _gradientBorderCard(
                       context: context,
                       gradientColors: _resultCardGradient.reversed.toList(),
@@ -476,7 +467,6 @@ class AdvancedComparisonScreen extends ConsumerWidget {
                           onShowDetails: () =>
                               _showH2HMatchesPopup(context, ref)),
                     ),
-                  // DÜZELTME: Fonksiyon adı değiştirildi.
                   _gradientBorderCard(
                     context: context,
                     gradientColors: _resultCardGradient,
