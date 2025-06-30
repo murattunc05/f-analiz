@@ -97,7 +97,8 @@ class MatchLineupsView extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final pitchWidth = constraints.maxWidth;
-        final pitchHeight = pitchWidth * 1.4;
+        // YENİ DÜZENLEME: Saha yüksekliği artırıldı
+        final pitchHeight = pitchWidth * 1.65;
 
         return ClipRRect(
           borderRadius: BorderRadius.circular(12.0),
@@ -157,23 +158,24 @@ class MatchLineupsView extends StatelessWidget {
         _buildPlayer(
           player: goalkeeper,
           left: pitchWidth / 2,
-          top: isHomeTeam ? pitchHeight * 0.94 : pitchHeight * 0.06,
+          top: isHomeTeam ? pitchHeight * 0.95 : pitchHeight * 0.05,
           isHome: isHomeTeam,
         ),
       );
     }
 
     final outfieldPlayers = players.where((p) => p['player']?['pos'] != 'G').toList();
-    // DÜZELTME: Dikey boşluk ve adım hesabı iyileştirildi.
-    final double verticalSpace = pitchHeight * 0.40; 
-    final double verticalStep = verticalSpace / (formationLines.length);
+    
+    // YENİ DÜZENLEME: Dikey boşluk ve adım hesabı iyileştirildi
+    final double teamAreaHeight = pitchHeight * 0.45; 
+    final double verticalStep = teamAreaHeight / (formationLines.length);
     int playerIndex = 0;
 
     for (int i = 0; i < formationLines.length; i++) {
       final linePlayerCount = formationLines[i];
       final verticalPosition = isHomeTeam
-          ? (pitchHeight * 0.88) - (verticalStep * (i + 1))
-          : (pitchHeight * 0.12) + (verticalStep * (i + 1));
+          ? (pitchHeight * 0.92) - (verticalStep * (i + 1)) 
+          : (pitchHeight * 0.08) + (verticalStep * (i + 1)); 
 
       for (int j = 0; j < linePlayerCount; j++) {
         if (playerIndex >= outfieldPlayers.length) break;
@@ -202,8 +204,8 @@ class MatchLineupsView extends StatelessWidget {
     required bool isHome,
   }) {
     final playerName = player['player']?['name'] as String? ?? 'Bilinmiyor';
-    final playerWidgetWidth = 70.0;
-    final playerWidgetHeight = 60.0;
+    final playerWidgetWidth = 80.0;
+    final playerWidgetHeight = 70.0; // Yükseklik artırıldı
     
     return Positioned(
       left: left - (playerWidgetWidth / 2),
@@ -239,7 +241,7 @@ class MatchLineupsView extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
               decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.5),
+                color: Colors.black.withOpacity(0.6),
                 borderRadius: BorderRadius.circular(4),
               ),
               child: Text(
