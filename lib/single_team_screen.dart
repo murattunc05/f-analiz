@@ -12,7 +12,6 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:futbol_analiz_app/services/logo_service.dart';
-import 'package:futbol_analiz_app/widgets/team_setup_card_widget.dart';
 import 'package:futbol_analiz_app/features/single_team_analysis/single_team_controller.dart';
 import 'package:futbol_analiz_app/services/team_name_service.dart';
 
@@ -31,8 +30,8 @@ class SingleTeamScreen extends ConsumerWidget {
     required this.scaffoldKey,
     required this.onSearchTap,
   });
-  
-  static const List<Color> _cardGradient = [Color(0xffec4899), Color(0xff7e22ce), Color(0xff2563eb)];
+
+  // --- Fonksiyonlar ---
 
   Future<void> _selectLeague(BuildContext context, WidgetRef ref) async {
     final controller = ref.read(singleTeamControllerProvider.notifier);
@@ -79,111 +78,297 @@ class SingleTeamScreen extends ConsumerWidget {
     }
   }
 
-  Widget _GradientBorderCard({required Widget child, required BuildContext context}) {
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 8.0),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16.0),
-        gradient: const LinearGradient(
-          colors: _cardGradient,
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+  String _getLeagueLogoAssetName(String leagueName) {
+    String normalized = leagueName.toLowerCase().replaceAll(' - ', '_').replaceAll(' ', '_');
+    const Map<String, String> charMap = { 'ı': 'i', 'ğ': 'g', 'ü': 'u', 'ş': 's', 'ö': 'o', 'ç': 'c', };
+    charMap.forEach((tr, en) => normalized = normalized.replaceAll(tr, en));
+    return 'assets/logos/leagues/${normalized.replaceAll(RegExp(r'[^\w_.-]'), '')}.png';
+  }
+
+  // --- YENİ UI/UX WIDGET'LARI ---
+
+  Widget _buildSetupCard(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final controllerState = ref.watch(singleTeamControllerProvider);
+    final selectedLeague = controllerState.selectedLeague;
+    final selectedTeam = controllerState.selectedTeam;
+
+    final String? leagueLogoAsset = selectedLeague != null ? _getLeagueLogoAssetName(selectedLeague) : null;
+    final String? teamLogoUrl = (selectedLeague != null && selectedTeam != null) ? LogoService.getTeamLogoUrl(selectedTeam, selectedLeague) : null;
+
+    return Card(
+      elevation: 2,
+      margin: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 8.0),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text("Takım Analizi", style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 16),
+            _buildSelectionButton(
+              context: context,
+              assetPath: leagueLogoAsset,
+              label: selectedLeague ?? "Lig Seçin",
+              isSelected: selectedLeague != null,
+              onTap: () => _selectLeague(context, ref),
+            ),
+            const SizedBox(height: 12),
+            _buildSelectionButton(
+              context: context,
+              logoUrl: teamLogoUrl,
+              label: selectedTeam != null ? TeamNameService.getCorrectedTeamName(selectedTeam) : "Takım Seçin",
+              isSelected: selectedTeam != null,
+              onTap: () => _selectTeam(context, ref),
+            ),
+          ],
         ),
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(1.5), 
-        child: Container(
-          clipBehavior: Clip.antiAlias,
-          decoration: BoxDecoration(
-            color: Theme.of(context).cardColor,
-            borderRadius: BorderRadius.circular(15.0),
+    );
+  }
+  
+  Widget _buildSelectionButton({
+    required BuildContext context,
+    String? assetPath,
+    String? logoUrl,
+    required String label,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    final theme = Theme.of(context);
+    const double logoSize = 24.0;
+
+    Widget leadingWidget;
+    if (logoUrl != null) {
+      leadingWidget = CachedNetworkImage(
+        imageUrl: logoUrl,
+        width: logoSize, height: logoSize, fit: BoxFit.contain,
+        errorWidget: (c, u, e) => Icon(Icons.shield_outlined, size: logoSize, color: theme.colorScheme.primary),
+      );
+    } else if (assetPath != null) {
+      leadingWidget = Image.asset(
+        assetPath,
+        width: logoSize, height: logoSize, fit: BoxFit.contain,
+        errorBuilder: (c, e, s) => Icon(Icons.shield_outlined, size: logoSize, color: theme.colorScheme.primary),
+      );
+    } else {
+      leadingWidget = Icon(
+        isSelected ? Icons.shield_rounded : Icons.shield_outlined, 
+        color: isSelected ? theme.colorScheme.primary : theme.colorScheme.onSurfaceVariant
+      );
+    }
+
+    return Material(
+      color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.5),
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          child: Row(
+            children: [
+              leadingWidget,
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  label,
+                  style: theme.textTheme.bodyLarge?.copyWith(
+                    color: isSelected ? theme.colorScheme.onSurface : theme.colorScheme.onSurfaceVariant,
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                  ),
+                ),
+              ),
+              Icon(Icons.arrow_forward_ios, size: 16, color: theme.colorScheme.onSurfaceVariant.withOpacity(0.6)),
+            ],
           ),
-          child: child,
         ),
       ),
     );
   }
 
+  Widget _buildEmptyState(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 32.0, vertical: 64.0),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.query_stats_rounded, size: 80, color: theme.colorScheme.primary.withOpacity(0.5)),
+          const SizedBox(height: 24),
+          Text(
+            "Analiz Sonuçları Burada",
+            style: theme.textTheme.headlineSmall?.copyWith(color: theme.colorScheme.onSurface),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 12),
+          Text(
+            "Yukarıdan bir lig ve takım seçerek o takımın detaylı istatistiklerini görüntüleyebilirsiniz.",
+            style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildModernStatsCard(BuildContext context, Map<String, dynamic> stats, String selectedLeague) {
+    final theme = Theme.of(context);
+    final String originalTeamName = stats["takim"] as String? ?? "";
+    final String teamDisplayTitle = stats["displayTeamName"] as String? ?? capitalizeFirstLetterOfWordsUtils(originalTeamName);
+    final String? teamLogoUrl = LogoService.getTeamLogoUrl(originalTeamName, selectedLeague);
+    final String titleSuffix = (stats['lastNMatchesUsed'] == null || (stats['lastNMatchesUsed'] as int) <= 0) 
+                                ? "(Tüm Sezon)" 
+                                : "(Son ${stats['lastNMatchesUsed']} Maç)";
+    
+    final int analyzedMatchCount = stats['lastNMatchesUsed'] as int? ?? 5;
+    final String matchDetailsKey = "son${analyzedMatchCount}MacDetaylari";
+    final List<Map<String, dynamic>> matchDetails = (stats[matchDetailsKey] as List?)?.cast<Map<String, dynamic>>() ?? [];
+
+    return Card(
+      elevation: 2,
+      margin: const EdgeInsets.symmetric(horizontal: 16.0),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => _showTeamGraphsDialog(context, stats, selectedLeague),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            children: [
+              // Kart Başlığı
+              Row(
+                children: [
+                  if (teamLogoUrl != null)
+                    CachedNetworkImage(
+                      imageUrl: teamLogoUrl,
+                      width: 32, height: 32, fit: BoxFit.contain,
+                      errorWidget: (c, u, e) => Icon(Icons.shield_outlined, size: 32, color: theme.colorScheme.primary),
+                    )
+                  else
+                    Icon(Icons.shield_outlined, size: 32, color: theme.colorScheme.primary),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(teamDisplayTitle, style: theme.textTheme.titleLarge),
+                        Text(titleSuffix, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+                      ],
+                    ),
+                  ),
+                  Icon(Icons.bar_chart_rounded, color: theme.colorScheme.onSurfaceVariant.withOpacity(0.6)),
+                ],
+              ),
+              const Divider(height: 24),
+              // İstatistikler
+              _buildStatRow('Galibiyet / Beraberlik / Mağlubiyet', "${stats['galibiyet']} / ${stats['beraberlik']} / ${stats['maglubiyet']}", theme, icon: Icons.emoji_events_outlined),
+              _buildStatRow('Attığı Gol / Yediği Gol', "${stats['attigi']} / ${stats['yedigi']}", theme, icon: Icons.sports_soccer_outlined),
+              _buildStatRow('Maç Başına Ort. Gol', (stats["macBasiOrtalamaGol"] as num?)?.toStringAsFixed(2) ?? "-", theme, icon: Icons.score_outlined),
+              _buildStatRow('KG Var / Yok Yüzdesi', "%${(stats["kgVarYuzdesi"] as num?)?.toStringAsFixed(1) ?? "-"} / %${(stats["kgYokYuzdesi"] as num?)?.toStringAsFixed(1) ?? "-"}", theme, icon: Icons.checklist_rtl_outlined),
+              _buildStatRow('Clean Sheet Sayısı (Gol Yemeden)', stats["cleanSheetSayisi"].toString(), theme, icon: Icons.shield_outlined),
+              _buildStatRow('Ortalama Korner', (stats["ortalamaKorner"] as num?)?.toStringAsFixed(1) ?? "N/A", theme, icon: Icons.flag_circle_outlined),
+              _buildStatRow('Ortalama Şut', (stats["ortalamaSut"] as num?)?.toStringAsFixed(1) ?? "N/A", theme, icon: Icons.radar_outlined),
+              _buildStatRow('Ortalama Faul', (stats["ortalamaFaul"] as num?)?.toStringAsFixed(1) ?? "N/A", theme, icon: Icons.sports_kabaddi_outlined),
+              
+              // **YENİ EKLENEN BÖLÜM**
+              if (statsSettings.showSon5MacDetaylari && matchDetails.isNotEmpty) ...[
+                const Divider(height: 24),
+                Theme( // ExpansionTile'ın altındaki ve üstündeki çizgiyi kaldırmak için
+                  data: theme.copyWith(dividerColor: Colors.transparent),
+                  child: ExpansionTile(
+                    tilePadding: EdgeInsets.zero,
+                    title: Text("Son Maç Sonuçları", style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
+                    children: matchDetails.map((match) => _buildMatchResultRow(context, match)).toList(),
+                  ),
+                ),
+              ]
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // **YENİ EKLENEN YARDIMCI WIDGET**
+  /// Açılır liste içindeki her bir maç sonucunu gösterir.
+  Widget _buildMatchResultRow(BuildContext context, Map<String, dynamic> match) {
+    final theme = Theme.of(context);
+    final homeTeam = capitalizeFirstLetterOfWordsUtils(match['homeTeam']?.toString() ?? 'Ev');
+    final awayTeam = capitalizeFirstLetterOfWordsUtils(match['awayTeam']?.toString() ?? 'Dep');
+    final homeGoals = match['homeGoals']?.toString() ?? '?';
+    final awayGoals = match['awayGoals']?.toString() ?? '?';
+    final date = match['date']?.toString() ?? '';
+    final resultText = match['result']?.toString() ?? '';
+
+    return ListTile(
+      dense: true,
+      title: Row(
+        children: [
+          Expanded(child: Text(homeTeam, overflow: TextOverflow.ellipsis, style: theme.textTheme.bodySmall)),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8.0),
+            child: Text("$homeGoals - $awayGoals", style: theme.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.bold)),
+          ),
+          Expanded(child: Text(awayTeam, textAlign: TextAlign.end, overflow: TextOverflow.ellipsis, style: theme.textTheme.bodySmall)),
+        ],
+      ),
+      subtitle: Text("$date ($resultText)", textAlign: TextAlign.center, style: theme.textTheme.labelSmall),
+    );
+  }
+
+
+  // --- Build Metodu ---
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final controllerState = ref.watch(singleTeamControllerProvider);
     final teamStatsAsyncValue = controllerState.teamStats;
-    
     final selectedLeague = controllerState.selectedLeague;
     final selectedTeam = controllerState.selectedTeam;
 
-    // DEĞİŞİKLİK: Scaffold ve SafeArea kaldırıldı, doğrudan ListView döndürülüyor
     return ListView(
       controller: scrollController,
       padding: EdgeInsets.zero,
       children: [
-        // DEĞİŞİKLİK: ModernHeaderWidget kaldırıldı
+        // Yeni Kurulum Kartı
+        _buildSetupCard(context, ref),
+
+        // Analiz Butonu
         Padding(
-          padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 8.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-               _GradientBorderCard(
-                context: context,
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: TeamSetupCardWidget(
-                    theme: theme,
-                    cardTitle: "Tek Takım Analizi",
-                    selectedLeague: selectedLeague,
-                    currentTeamName: selectedTeam ?? '',
-                    selectedSeasonApiVal: currentSeasonApiValue,
-                    globalCurrentSeasonApiValue: currentSeasonApiValue,
-                    onLeagueSelectTap: () => _selectLeague(context, ref),
-                    onTeamSelectTap: () => _selectTeam(context, ref),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12.0),
-              ElevatedButton.icon(
-                icon: teamStatsAsyncValue.isLoading 
-                    ? SpinKitThreeBounce(color: theme.colorScheme.onPrimary, size: 18.0) 
-                    : const Icon(Icons.analytics_outlined, size: 20),
-                label: teamStatsAsyncValue.isLoading ? const SizedBox.shrink() : const Text('İstatistikleri Getir'),
-                onPressed: (selectedLeague == null || teamStatsAsyncValue.isLoading || selectedTeam == null) 
-                    ? null 
-                    : () {
-                        HapticFeedback.mediumImpact(); 
-                        ref.read(singleTeamControllerProvider.notifier).fetchTeamStats(currentSeasonApiValue);
-                      },
-                 style: ElevatedButton.styleFrom(
-                   padding: teamStatsAsyncValue.isLoading ? const EdgeInsets.symmetric(horizontal: 24.0, vertical: 12.0) : null, 
-                   minimumSize: teamStatsAsyncValue.isLoading ? const Size(64, 48) : null
-                 ),
-              )
-            ]
+          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+          child: ElevatedButton.icon(
+            icon: teamStatsAsyncValue.isLoading 
+                ? SpinKitThreeBounce(color: theme.colorScheme.onPrimary, size: 18.0) 
+                : const Icon(Icons.analytics_outlined, size: 20),
+            label: const Text('İstatistikleri Getir'),
+            onPressed: (selectedLeague == null || teamStatsAsyncValue.isLoading || selectedTeam == null) 
+                ? null 
+                : () {
+                    HapticFeedback.mediumImpact(); 
+                    ref.read(singleTeamControllerProvider.notifier).fetchTeamStats(currentSeasonApiValue);
+                  },
+             style: ElevatedButton.styleFrom(
+               padding: const EdgeInsets.symmetric(vertical: 14),
+               minimumSize: const Size(double.infinity, 50),
+             ),
           ),
         ),
+        
+        // Sonuç Alanı
         Padding(
-          padding: const EdgeInsets.fromLTRB(16,0,16,16),
+          padding: const EdgeInsets.fromLTRB(0, 16, 0, 16),
           child: teamStatsAsyncValue.when(
             data: (stats) {
-              if (stats == null || stats.isEmpty || stats['oynananMacSayisi'] == 0) {
+              if (stats.isEmpty) {
+                // Seçim yapılmadıysa veya yeni lig seçildiyse (takım sıfırlandı) boş durumu göster
                 if (selectedLeague == null || selectedTeam == null) {
-                  return const Padding(
-                    padding: EdgeInsets.only(top:32.0),
-                    child: Center(child: Text('İstatistikler burada görünecek.\nLig ve takım seçimi yapın.', textAlign: TextAlign.center, style: TextStyle(color: Colors.grey))),
-                  );
+                  return _buildEmptyState(context);
                 }
+                // Seçim yapıldı ama veri yoksa (örn. yeni sezon veya hata) boşluk bırak
                 return const SizedBox.shrink();
               }
-              
-              return InkWell(
-                onTap: () => _showTeamGraphsDialog(context, stats, selectedLeague),
-                child: _GradientBorderCard(
-                  context: context,
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: _buildTeamStatsCardContent(stats, theme, selectedLeague)
-                  )
-                ),
-              );
+              // Veri varsa yeni istatistik kartını göster
+              return _buildModernStatsCard(context, stats, selectedLeague!);
             },
             loading: () => const Center(
               child: Padding(
@@ -207,39 +392,21 @@ class SingleTeamScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildStatRow(String label, String value, ThemeData theme, {required bool show, IconData? icon, Color? iconColorOverride}) {
-    if (!show) return const SizedBox.shrink();
-    IconData iconData = icon ?? Icons.info_outline;
-    Color finalIconColor = iconColorOverride ?? theme.colorScheme.onSurfaceVariant;
-
-    if (icon == null) {
-        if (label.contains('Attığı Gol')) { iconData = Icons.sports_soccer_outlined; finalIconColor = Colors.green.shade600; }
-        else if (label.contains('Yediği Gol')) { iconData = Icons.shield_moon_outlined; finalIconColor = Colors.red.shade400; }
-        else if (label.contains('Gol Farkı')) { iconData = Icons.swap_horiz_outlined; finalIconColor = theme.colorScheme.tertiary; }
-        else if (label.contains('Galibiyet')) { iconData = Icons.emoji_events_outlined; finalIconColor = Colors.amber.shade700; }
-        else if (label.contains('Beraberlik')) { iconData = Icons.handshake_outlined; finalIconColor = Colors.blueGrey.shade400; }
-        else if (label.contains('Mağlubiyet')) { iconData = Icons.sentiment_very_dissatisfied_outlined; finalIconColor = Colors.red.shade700; }
-        else if (label.contains('Maç Başına Ort. Gol')) { iconData = Icons.score_outlined; finalIconColor = theme.colorScheme.secondary; }
-        else if (label.contains('Maçlarda Ort. Toplam Gol')) { iconData = Icons.public_outlined; finalIconColor = theme.colorScheme.secondary; }
-        else if (label.contains('KG Var Yüzdesi')) { iconData = Icons.checklist_rtl_outlined; finalIconColor = Colors.teal.shade400; }
-        else if (label.contains('KG Yok Yüzdesi')) { iconData = Icons.unpublished_outlined; finalIconColor = Colors.brown.shade400; }
-        else if (label.contains('Clean Sheet Sayısı')) { iconData = Icons.shield_outlined; finalIconColor = Colors.blue.shade700; }
-        else if (label.contains('Clean Sheet Yüzdesi')) { iconData = Icons.shield_outlined; finalIconColor = Colors.blue.shade700; }
-        else if (label.contains('Olasılığı')) { iconData = Icons.percent_outlined; finalIconColor = theme.colorScheme.secondary; }
-    }
+  // --- Değişmeyen Orijinal Widget'lar (Stat Row ve Grafikler) ---
+  Widget _buildStatRow(String label, String value, ThemeData theme, {required IconData icon}) {
      return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6.0),
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Row(
         children: [
-          Icon(iconData, size: 20.0, color: finalIconColor),
-          const SizedBox(width: 10.0),
-          Expanded(child: Text('$label:', style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500))),
-          Text(value, style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold))
+          Icon(icon, size: 22.0, color: theme.colorScheme.primary),
+          const SizedBox(width: 12.0),
+          Expanded(child: Text(label, style: theme.textTheme.bodyMedium)),
+          Text(value, style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold))
         ]
       )
     );
   }
-
+  
   void _showTeamGraphsDialog(BuildContext context, Map<String, dynamic> teamStats, String? selectedLeague) {
     ThemeData theme = Theme.of(context);
     if (teamStats.isEmpty) return;
@@ -315,69 +482,6 @@ class SingleTeamScreen extends ConsumerWidget {
         ),
       ),
       actionsWidget: [ TextButton(child: const Text('Kapat'), onPressed: () => Navigator.of(context).pop()) ], maxHeightFactor: 0.85,
-    );
-  }
-
-  Widget _buildTeamStatsCardContent(Map<String, dynamic> stats, ThemeData theme, String? selectedLeague) {
-    if (!statsSettings.showOverallLast5Stats) return const SizedBox.shrink();
-
-    final int analyzedMatchCount = stats['oynananMacSayisi'] as int? ?? (stats['lastNMatchesUsed'] as int? ?? 5);
-    final String matchDetailsKey = "son${analyzedMatchCount}MacDetaylari";
-    final List<Map<String, dynamic>> matchDetails = (stats[matchDetailsKey] as List?)?.cast<Map<String, dynamic>>() ?? [];
-    
-    final String originalTeamName = stats["takim"] as String? ?? "";
-    final String teamDisplayTitle = stats["displayTeamName"] as String? ?? capitalizeFirstLetterOfWordsUtils(originalTeamName);
-    
-    final String titleSuffix = (stats['lastNMatchesUsed'] == null || (stats['lastNMatchesUsed'] as int) <= 0) ? "(Tüm Maçlar)" : "(Son ${stats['lastNMatchesUsed']} Maç)";
-
-    String? teamLogoUrl;
-    if (selectedLeague != null && originalTeamName.isNotEmpty) {
-      teamLogoUrl = LogoService.getTeamLogoUrl(originalTeamName, selectedLeague);
-    }
-    const double titleLogoSize = 22.0;
-
-    return Column( crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row( crossAxisAlignment: CrossAxisAlignment.center, children: [
-            if (teamLogoUrl != null) Padding( padding: const EdgeInsets.only(right: 8.0),
-                child: CachedNetworkImage( imageUrl: teamLogoUrl, width: titleLogoSize, height: titleLogoSize, fit: BoxFit.contain,
-                  placeholder: (context, url) => const SizedBox(width: titleLogoSize, height: titleLogoSize),
-                  errorWidget: (context, url, error) => Icon(Icons.shield_outlined, size: titleLogoSize, color: theme.colorScheme.onSurfaceVariant.withAlpha(128)),
-                ))
-            else if (originalTeamName.isNotEmpty)
-              Padding( padding: const EdgeInsets.only(right: 8.0),
-                child: Icon(Icons.shield_outlined, size: titleLogoSize, color: theme.colorScheme.onSurfaceVariant.withAlpha(128)),
-              ),
-            Expanded( child: Text( '$teamDisplayTitle $titleSuffix', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis, ))
-          ]),
-        const Divider(height: 20, thickness: 0.5),
-        _buildStatRow('Attığı Gol', stats["attigi"].toString(), theme, show: statsSettings.showAttigiGol),
-        _buildStatRow('Yediği Gol', stats["yedigi"].toString(), theme, show: statsSettings.showYedigiGol),
-        _buildStatRow('Gol Farkı', stats["golFarki"].toString(), theme, show: statsSettings.showGolFarki),
-        _buildStatRow('Galibiyet', stats["galibiyet"].toString(), theme, show: statsSettings.showGalibiyet),
-        _buildStatRow('Beraberlik', stats["beraberlik"].toString(), theme, show: statsSettings.showBeraberlik),
-        _buildStatRow('Mağlubiyet', stats["maglubiyet"].toString(), theme, show: statsSettings.showMaglubiyet),
-        _buildStatRow('Maç Başına Ort. Gol', (stats["macBasiOrtalamaGol"] as num?)?.toStringAsFixed(2) ?? "-", theme, show: statsSettings.showMacBasiOrtGol),
-        _buildStatRow('Maçlarda Ort. Toplam Gol', (stats["maclardaOrtalamaToplamGol"] as num?)?.toStringAsFixed(2) ?? "-", theme, show: statsSettings.showMaclardaOrtTplGol),
-        _buildStatRow('KG Var Yüzdesi', '%${(stats["kgVarYuzdesi"] as num?)?.toStringAsFixed(1) ?? "-"}', theme, show: statsSettings.showKgVarYok),
-        _buildStatRow('KG Yok Yüzdesi', '%${(stats["kgYokYuzdesi"] as num?)?.toStringAsFixed(1) ?? "-"}', theme, show: statsSettings.showKgVarYok),
-        _buildStatRow('Clean Sheet Sayısı', stats["cleanSheetSayisi"].toString(), theme, show: statsSettings.showCleanSheet, icon: Icons.shield_outlined, iconColorOverride: Colors.blue.shade700),
-        _buildStatRow('Clean Sheet Yüzdesi', '%${(stats["cleanSheetYuzdesi"] as num?)?.toStringAsFixed(1) ?? "-"}', theme, show: statsSettings.showCleanSheet, icon: Icons.shield_outlined, iconColorOverride: Colors.blue.shade700),
-        _buildStatRow('2+ Gol Olasılığı', '%${(stats["gol2UstuOlasilik"] as num?)?.toStringAsFixed(1) ?? "-"}', theme, show: statsSettings.showGol2UstuOlasilik),
-
-        if (statsSettings.showSon5MacDetaylari)
-            Theme( data: theme.copyWith(dividerColor: Colors.transparent),
-                child: ExpansionTile(
-                    tilePadding: const EdgeInsets.symmetric(vertical: 0.0, horizontal: 0.0), iconColor: theme.colorScheme.primary, collapsedIconColor: theme.colorScheme.onSurfaceVariant,
-                    title: Row(children: [
-                            Icon(Icons.event_note_outlined, color: theme.textTheme.titleSmall?.color?.withAlpha(204)), const SizedBox(width: 8),
-                            Text('Son $analyzedMatchCount Maç Detayları', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
-                        ]),
-                    children: matchDetails.isNotEmpty
-                        ? matchDetails.map((match) => Padding( padding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 4.0), child: Text( '${match["date"]}: ${capitalizeFirstLetterOfWordsUtils(match["homeTeam"])} ${match["homeGoals"]} - ${match["awayGoals"]} ${capitalizeFirstLetterOfWordsUtils(match["awayTeam"])} (${match["result"]})', style: theme.textTheme.bodySmall))).toList()
-                        : [Padding( padding: const EdgeInsets.all(8.0), child: Text("Son $analyzedMatchCount maç detayı bulunamadı.", style: theme.textTheme.bodySmall?.copyWith(fontStyle: FontStyle.italic), textAlign: TextAlign.center)) ],
-                ),
-            ),
-      ],
     );
   }
 }
