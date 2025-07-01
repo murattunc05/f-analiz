@@ -79,10 +79,8 @@ class MatchLineupsView extends StatelessWidget {
   Widget _buildFootballPitch(BuildContext context, Map<String, dynamic> homeTeam, Map<String, dynamic> awayTeam) {
     final homeStarters = (homeTeam['startXI'] as List<dynamic>?) ?? [];
     final awayStarters = (awayTeam['startXI'] as List<dynamic>?) ?? [];
-    final homeFormation = homeTeam['formation'] as String?;
-    final awayFormation = awayTeam['formation'] as String?;
-
-    if (homeStarters.isEmpty || awayStarters.isEmpty || homeFormation == null || awayFormation == null) {
+    
+    if (homeStarters.isEmpty || awayStarters.isEmpty) {
       return Container(
         height: 200,
         alignment: Alignment.center,
@@ -97,7 +95,6 @@ class MatchLineupsView extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final pitchWidth = constraints.maxWidth;
-        // YENİ DÜZENLEME: Saha yüksekliği artırıldı
         final pitchHeight = pitchWidth * 1.65;
 
         return ClipRRect(
@@ -112,16 +109,14 @@ class MatchLineupsView extends StatelessWidget {
                   size: Size.infinite,
                   painter: PitchPainter(),
                 ),
-                ..._buildPlayerWidgets(
+                ..._buildPlayerWidgetsFromGrid(
                   players: homeStarters,
-                  formation: homeFormation,
                   pitchWidth: pitchWidth,
                   pitchHeight: pitchHeight,
                   isHomeTeam: true,
                 ),
-                ..._buildPlayerWidgets(
+                ..._buildPlayerWidgetsFromGrid(
                   players: awayStarters,
-                  formation: awayFormation,
                   pitchWidth: pitchWidth,
                   pitchHeight: pitchHeight,
                   isHomeTeam: false,
@@ -134,78 +129,123 @@ class MatchLineupsView extends StatelessWidget {
     );
   }
 
-  List<Widget> _buildPlayerWidgets({
+  // GÜNCELLEME: Oyuncu yerleşim mantığı, referans görsele uygun olarak tamamen yeniden yazıldı.
+  List<Widget> _buildPlayerWidgetsFromGrid({
     required List<dynamic> players,
-    required String formation,
     required double pitchWidth,
     required double pitchHeight,
     required bool isHomeTeam,
   }) {
-    if (formation.isEmpty || !formation.contains('-')) {
-        return [];
-    }
-    
-    final formationLines = formation.split('-').map(int.tryParse).where((n) => n != null).cast<int>().toList();
-    if (formationLines.isEmpty || formationLines.fold(0, (a, b) => a + b) > 10) {
-        return [];
-    }
-
     final List<Widget> playerWidgets = [];
 
-    final goalkeeper = players.firstWhere((p) => p['player']?['pos'] == 'G', orElse: () => players.isNotEmpty ? players.first : null);
+    // 1. Grid verisi olan ve olmayan oyuncuları ayır.
+    final goalkeeper = players.firstWhere((p) => p['player']?['pos'] == 'G', orElse: () => null);
+    // DÜZELTME: Kaleciyi listeden çıkararak mükerrer gösterimi engelle.
+    final outfieldPlayers = players.where((p) => p['player']?['pos'] != 'G' && p['player']?['grid'] != null && (p['player']['grid'] as String).contains(':')).toList();
+
+    // Grid verisi yoksa, mantık yürütülemez.
+    if (outfieldPlayers.isEmpty) {
+      return [];
+    }
+    
+    // 2. Oyuncuları grid'deki satır ve sütun numaralarına göre grupla ve maksimum değerleri bul.
+    final Map<int, List<Map<String, dynamic>>> playersByRow = {};
+    int maxRow = 0;
+    int maxCol = 0;
+
+    for (var p in outfieldPlayers) {
+      final parts = (p['player']['grid'] as String).split(':');
+      final row = int.tryParse(parts[0]) ?? 0;
+      final col = int.tryParse(parts[1]) ?? 0;
+
+      if (row > 0) {
+        if (!playersByRow.containsKey(row)) {
+          playersByRow[row] = [];
+        }
+        playersByRow[row]!.add(p['player']);
+        if (row > maxRow) maxRow = row;
+        if (col > maxCol) maxCol = col;
+      }
+    }
+    
+    // 3. Kaleciyi her zaman standart yerine koy.
     if (goalkeeper != null) {
       playerWidgets.add(
         _buildPlayer(
-          player: goalkeeper,
+          player: goalkeeper['player'],
           left: pitchWidth / 2,
           top: isHomeTeam ? pitchHeight * 0.95 : pitchHeight * 0.05,
           isHome: isHomeTeam,
         ),
       );
     }
-
-    final outfieldPlayers = players.where((p) => p['player']?['pos'] != 'G').toList();
     
-    // YENİ DÜZENLEME: Dikey boşluk ve adım hesabı iyileştirildi
-    final double teamAreaHeight = pitchHeight * 0.45; 
-    final double verticalStep = teamAreaHeight / (formationLines.length);
-    int playerIndex = 0;
+    // 4. Oynanabilir alanın sınırlarını ve dikey adımları tanımla.
+    const double horizontalPadding = 0.08; // Kenarlardan %8 boşluk
+    const double verticalPadding = 0.12;   // Kale arkasından %12 boşluk
+    const double midFieldBuffer = 0.05;   // Orta saha çizgisinden %5 tampon
 
-    for (int i = 0; i < formationLines.length; i++) {
-      final linePlayerCount = formationLines[i];
-      final verticalPosition = isHomeTeam
-          ? (pitchHeight * 0.92) - (verticalStep * (i + 1)) 
-          : (pitchHeight * 0.08) + (verticalStep * (i + 1)); 
+    final playableWidth = pitchWidth * (1 - 2 * horizontalPadding);
+    final startX = pitchWidth * horizontalPadding;
+    
+    // 5. Her satırdaki (line) oyuncuları yerleştir.
+    final sortedRows = playersByRow.keys.toList()..sort();
 
-      for (int j = 0; j < linePlayerCount; j++) {
-        if (playerIndex >= outfieldPlayers.length) break;
+    for (var row in sortedRows) {
+      final playersInRow = playersByRow[row]!;
+      
+      // Dikey pozisyonu (Y) hesapla.
+      final double verticalRatio = (row - 1) / (maxRow > 1 ? maxRow - 1 : 1);
+      
+      double y;
+      if (isHomeTeam) {
+        // Ev sahibi (alt yarı saha): Defans (row 1) kaleye yakın, forvet (maxRow) orta sahaya yakın olmalı.
+        final homeDefensiveLineY = pitchHeight * (1 - verticalPadding);
+        final homeOffensiveLineY = (pitchHeight / 2) + (pitchHeight * midFieldBuffer);
+        final homePlayableHeight = homeDefensiveLineY - homeOffensiveLineY;
+        y = homeDefensiveLineY - (verticalRatio * homePlayableHeight);
+      } else {
+        // Deplasman (üst yarı saha): Defans (row 1) kaleye yakın, forvet (maxRow) orta sahaya yakın olmalı.
+        final awayDefensiveLineY = pitchHeight * verticalPadding;
+        final awayOffensiveLineY = (pitchHeight / 2) - (pitchHeight * midFieldBuffer);
+        final awayPlayableHeight = awayOffensiveLineY - awayDefensiveLineY;
+        y = awayDefensiveLineY + (verticalRatio * awayPlayableHeight);
+      }
+
+      // Yatay pozisyonu (X) hesapla.
+      for (int i = 0; i < playersInRow.length; i++) {
+        final player = playersInRow[i];
+        final col = int.tryParse((player['grid'] as String).split(':')[1]) ?? 0;
         
-        final horizontalPosition = (pitchWidth / (linePlayerCount + 1)) * (j + 1);
-
+        // DÜZELTME: Oyuncuları o hattaki sayısına göre değil, genel maksimum sütun sayısına göre yerleştir.
+        // Bu, kanat oyuncularının kenarlara daha yakın olmasını sağlar.
+        final double horizontalRatio = (col - 1) / (maxCol > 1 ? maxCol - 1 : 1);
+        final double x = startX + (horizontalRatio * playableWidth);
+        
         playerWidgets.add(
           _buildPlayer(
-            player: outfieldPlayers[playerIndex],
-            left: horizontalPosition,
-            top: verticalPosition,
+            player: player,
+            left: x,
+            top: y,
             isHome: isHomeTeam,
           ),
         );
-        playerIndex++;
       }
     }
 
     return playerWidgets;
   }
 
+  // Oyuncu widget'ını oluşturan metot.
   Widget _buildPlayer({
     required dynamic player,
     required double left,
     required double top,
     required bool isHome,
   }) {
-    final playerName = player['player']?['name'] as String? ?? 'Bilinmiyor';
+    final playerName = player['name'] as String? ?? 'Bilinmiyor';
     final playerWidgetWidth = 80.0;
-    final playerWidgetHeight = 70.0; // Yükseklik artırıldı
+    final playerWidgetHeight = 70.0; 
     
     return Positioned(
       left: left - (playerWidgetWidth / 2),
@@ -233,7 +273,7 @@ class MatchLineupsView extends StatelessWidget {
                 ]
               ),
               child: Text(
-                player['player']?['number']?.toString() ?? '?',
+                player['number']?.toString() ?? '?',
                 style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
               ),
             ),
@@ -257,6 +297,7 @@ class MatchLineupsView extends StatelessWidget {
     );
   }
 
+  // Yedek oyuncular listesi (Değişiklik yok)
   Widget _buildSubstitutes(BuildContext context, Map<String, dynamic> homeTeam, Map<String, dynamic> awayTeam) {
     final homeSubstitutes = (homeTeam['substitutes'] as List<dynamic>?) ?? [];
     final awaySubstitutes = (awayTeam['substitutes'] as List<dynamic>?) ?? [];
@@ -317,6 +358,7 @@ class MatchLineupsView extends StatelessWidget {
   }
 }
 
+// Saha çizgilerini çizen CustomPainter (Değişiklik yok)
 class PitchPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
@@ -330,6 +372,7 @@ class PitchPainter extends CustomPainter {
 
     canvas.drawRect(Rect.fromLTWH(0, 0, width, height), paint);
     canvas.drawLine(Offset(0, height / 2), Offset(width, height / 2), paint);
+    
     canvas.drawCircle(Offset(width / 2, height / 2), width / 8, paint);
     canvas.drawCircle(Offset(width / 2, height / 2), 3, paint..style = PaintingStyle.fill);
     paint.style = PaintingStyle.stroke;

@@ -23,6 +23,7 @@ class _MatchDetailScreenState extends ConsumerState<MatchDetailScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   
+  // YENİ: Her iki takım için renk ve palet bilgisi tutulacak
   Color? _homeTeamColor;
   Color? _awayTeamColor;
 
@@ -30,6 +31,7 @@ class _MatchDetailScreenState extends ConsumerState<MatchDetailScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+    // YENİ: Renk paletlerini asenkron olarak yükleyen metot
     _updatePalettes();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final fixtureId = widget.matchData['fixture']['id'] as int;
@@ -43,6 +45,7 @@ class _MatchDetailScreenState extends ConsumerState<MatchDetailScreen>
     super.dispose();
   }
 
+  // YENİ: Her iki takımın logosundan baskın renkleri çıkaran metot
   Future<void> _updatePalettes() async {
     final homeLogoUrl = widget.matchData['teams']['home']['logo'] as String?;
     final awayLogoUrl = widget.matchData['teams']['away']['logo'] as String?;
@@ -51,7 +54,9 @@ class _MatchDetailScreenState extends ConsumerState<MatchDetailScreen>
       if (url == null) return null;
       try {
         final provider = CachedNetworkImageProvider(url);
+        // PaletteGenerator'a boyut ve bölge belirterek daha hızlı ve isabetli sonuçlar alabiliriz.
         final palette = await PaletteGenerator.fromImageProvider(provider, size: const Size(50, 50));
+        // Daha canlı bir renk varsa onu, yoksa baskın rengi kullan
         return palette.vibrantColor?.color ?? palette.dominantColor?.color;
       } catch (e) {
         debugPrint("Palet üretilemedi: $url, Hata: $e");
@@ -59,6 +64,7 @@ class _MatchDetailScreenState extends ConsumerState<MatchDetailScreen>
       }
     }
 
+    // İki renk üretimini paralel olarak çalıştır
     final colors = await Future.wait([
       generateColor(homeLogoUrl),
       generateColor(awayLogoUrl),
@@ -72,6 +78,7 @@ class _MatchDetailScreenState extends ConsumerState<MatchDetailScreen>
     }
   }
 
+  // Maç durumunu gösteren metin (Değişiklik yok)
   String _getStatusText(String shortStatus, int? minute) {
     if (['1H', '2H', 'ET', 'P', 'LIVE'].contains(shortStatus)) return "$minute'";
     if (shortStatus == 'HT') return "Devre Arası";
@@ -90,7 +97,10 @@ class _MatchDetailScreenState extends ConsumerState<MatchDetailScreen>
     final detailAsyncValue =
         ref.watch(matchDetailProvider(fixtureId).select((s) => s.fixtureDetails));
 
+    // YENİ: Header rengi ve başlık rengi için daha gelişmiş mantık
+    // Ana renk olarak ev sahibi takımın rengini veya temanın birincil rengini alıyoruz.
     final headerColor = _homeTeamColor ?? theme.colorScheme.primary;
+    // Başlık rengini, header renginin parlaklığına göre belirliyoruz (kontrast için).
     final titleColor =
         headerColor.computeLuminance() > 0.5 ? Colors.black : Colors.white;
 
@@ -109,8 +119,8 @@ class _MatchDetailScreenState extends ConsumerState<MatchDetailScreen>
                   pinned: true,
                   floating: false,
                   elevation: innerBoxIsScrolled ? 2.0 : 0.0,
-                  backgroundColor: headerColor,
-                  iconTheme: IconThemeData(color: titleColor),
+                  backgroundColor: headerColor, // Arka plan rengi
+                  iconTheme: IconThemeData(color: titleColor), // Geri butonu rengi
                   flexibleSpace: _AnimatedHeader(
                     details: details,
                     homeTeamColor: _homeTeamColor,
@@ -120,9 +130,10 @@ class _MatchDetailScreenState extends ConsumerState<MatchDetailScreen>
                         details['fixture']['status']['short'],
                         details['fixture']['status']['elapsed']),
                   ),
+                  // YENİ: TabBar'ın arka planını scaffold rengi yaparak daha modern bir görünüm elde ediyoruz.
                   bottom: PreferredSize(
                     preferredSize: const Size.fromHeight(kToolbarHeight),
-                    child: Material( // YENİ: TabBar'a opak arka plan vermek için
+                    child: Material( 
                       color: theme.scaffoldBackgroundColor,
                       child: TabBar(
                         isScrollable: true,
@@ -168,6 +179,7 @@ class _MatchDetailScreenState extends ConsumerState<MatchDetailScreen>
   }
 }
 
+// YENİ: Tamamen yeniden tasarlanmış Header Widget'ı
 class _AnimatedHeader extends StatelessWidget {
   final Map<String, dynamic> details;
   final Color? homeTeamColor;
@@ -186,6 +198,7 @@ class _AnimatedHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    // Renkler null ise tema renklerini varsayılan olarak kullan
     final finalHomeColor = homeTeamColor ?? theme.colorScheme.primary;
     final finalAwayColor = awayTeamColor ?? theme.colorScheme.secondary;
 
@@ -193,18 +206,24 @@ class _AnimatedHeader extends StatelessWidget {
       builder: (BuildContext context, BoxConstraints constraints) {
         final settings = context
             .dependOnInheritedWidgetOfExactType<FlexibleSpaceBarSettings>()!;
+        // AppBar'ın ne kadar kaydırıldığını hesaplayan `t` değeri (0.0 - 1.0 arası)
         final double t = (settings.currentExtent - settings.minExtent) /
             (settings.maxExtent - settings.minExtent);
+        // Animasyonun daha yumuşak olması için bir Curve ekliyoruz
         final Curve curve = Curves.easeInOut;
         final double fadeT = curve.transform(t.clamp(0.0, 1.0));
 
         return Container(
-          color: finalHomeColor,
+          color: finalHomeColor, // Temel arka plan rengi
           child: Stack(
             fit: StackFit.expand,
             children: [
+              // 1. Bulanık ve Gradyanlı Arka Plan
               _buildBlurredBackground(finalHomeColor, finalAwayColor),
+              
+              // 2. Genişletilmiş Header İçeriği (Kaydırıldıkça kaybolur)
               Positioned.fill(
+                // İçeriğin kaydırma ile birlikte paralaks efekti yapmasını sağlar
                 top: (settings.currentExtent - settings.maxExtent) * 0.5,
                 child: Opacity(
                   opacity: fadeT,
@@ -216,8 +235,10 @@ class _AnimatedHeader extends StatelessWidget {
                   ),
                 ),
               ),
+
+              // 3. Daraltılmış Header İçeriği (Kaydırıldıkça ortaya çıkar)
               Positioned.fill(
-                bottom: 48,
+                bottom: 48, // TabBar'ın üstünde kalması için
                 child: Opacity(
                   opacity: 1.0 - fadeT,
                   child: Align(
@@ -236,12 +257,14 @@ class _AnimatedHeader extends StatelessWidget {
     );
   }
 
-  // YENİ DÜZENLEME: Daha zarif ve bulanık arka plan
+  // YENİ: Daha zarif ve bulanık arka plan oluşturan metot
   Widget _buildBlurredBackground(Color homeColor, Color awayColor) {
     return Stack(
       fit: StackFit.expand,
       children: [
+        // Hafif karartma katmanı
         Container(color: Colors.black.withOpacity(0.2)),
+        // Gradyan renk lekeleri
         Align(
           alignment: Alignment.topLeft,
           child: Container(
@@ -266,6 +289,7 @@ class _AnimatedHeader extends StatelessWidget {
             ),
           ),
         ),
+        // Glassmorphism etkisi için BackdropFilter
         ClipRRect(
           child: BackdropFilter(
             filter: ImageFilter.blur(sigmaX: 30.0, sigmaY: 30.0),
@@ -278,6 +302,7 @@ class _AnimatedHeader extends StatelessWidget {
     );
   }
 
+  // Genişletilmiş header içeriği (Değişiklik yok, ama artık daha güzel bir arka plan üzerinde)
   Widget _buildExpandedHeaderContent(
       BuildContext context, Map<String, dynamic> details, Color titleColor) {
     final events = details['events'] as List<dynamic>? ?? [];
@@ -320,6 +345,7 @@ class _AnimatedHeader extends StatelessWidget {
     );
   }
 
+  // Daraltılmış header içeriği (Değişiklik yok)
   Widget _buildCollapsedAppBarTitle(
       BuildContext context, Map<String, dynamic> details, Color titleColor) {
     final theme = Theme.of(context);
@@ -353,6 +379,7 @@ class _AnimatedHeader extends StatelessWidget {
     );
   }
 
+  // Takım logosu ve adını gösteren widget (Değişiklik yok)
   Widget _buildTeamDisplay(
       BuildContext context, Map<String, dynamic> team, Color textColor) {
     return Expanded(
@@ -387,6 +414,7 @@ class _AnimatedHeader extends StatelessWidget {
     );
   }
 
+  // Skoru gösteren widget (Değişiklik yok)
   Widget _buildScoreDisplay(BuildContext context, Map<String, dynamic> goals,
       String statusText, Color textColor) {
     final theme = Theme.of(context);
@@ -419,6 +447,7 @@ class _AnimatedHeader extends StatelessWidget {
     );
   }
 
+  // Gol atanları gösteren widget (Değişiklik yok)
   Widget _buildGoalScorers(BuildContext context, List<dynamic> homeGoals,
       List<dynamic> awayGoals, Color textColor) {
     Widget goalEntry(String playerName, int time, {bool isOwnGoal = false}) {
