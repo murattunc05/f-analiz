@@ -95,7 +95,8 @@ class MatchLineupsView extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final pitchWidth = constraints.maxWidth;
-        final pitchHeight = pitchWidth * 1.65;
+        // Referans görsele daha uygun bir saha oranı
+        final pitchHeight = pitchWidth * 1.5;
 
         return ClipRRect(
           borderRadius: BorderRadius.circular(12.0),
@@ -109,12 +110,14 @@ class MatchLineupsView extends StatelessWidget {
                   size: Size.infinite,
                   painter: PitchPainter(),
                 ),
+                // Home team players (bottom half)
                 ..._buildPlayerWidgetsFromGrid(
                   players: homeStarters,
                   pitchWidth: pitchWidth,
                   pitchHeight: pitchHeight,
                   isHomeTeam: true,
                 ),
+                // Away team players (top half)
                 ..._buildPlayerWidgetsFromGrid(
                   players: awayStarters,
                   pitchWidth: pitchWidth,
@@ -129,7 +132,8 @@ class MatchLineupsView extends StatelessWidget {
     );
   }
 
-  // GÜNCELLEME: Oyuncu yerleşim mantığı, referans görsele uygun olarak tamamen yeniden yazıldı.
+  // GÜNCELLEME: Oyuncu yerleşim mantığı, formasyona göre dinamik ve orantılı
+  // yerleşim yapacak şekilde tamamen yeniden yazıldı.
   List<Widget> _buildPlayerWidgetsFromGrid({
     required List<dynamic> players,
     required double pitchWidth,
@@ -138,37 +142,47 @@ class MatchLineupsView extends StatelessWidget {
   }) {
     final List<Widget> playerWidgets = [];
 
-    // 1. Grid verisi olan ve olmayan oyuncuları ayır.
+    // 1. Kaleciyi ve saha oyuncularını ayır
     final goalkeeper = players.firstWhere((p) => p['player']?['pos'] == 'G', orElse: () => null);
-    // DÜZELTME: Kaleciyi listeden çıkararak mükerrer gösterimi engelle.
-    final outfieldPlayers = players.where((p) => p['player']?['pos'] != 'G' && p['player']?['grid'] != null && (p['player']['grid'] as String).contains(':')).toList();
-
-    // Grid verisi yoksa, mantık yürütülemez.
+    final outfieldPlayers = players.where((p) =>
+        p['player']?['pos'] != 'G' &&
+        p['player']?['grid'] != null &&
+        (p['player']['grid'] as String).contains(':')).toList();
+    
+    // 2. Sadece kaleci varsa veya saha oyuncusu bilgisi yoksa, kaleciyi yerleştirip bitir.
     if (outfieldPlayers.isEmpty) {
-      return [];
+        if (goalkeeper != null) {
+          playerWidgets.add(
+            _buildPlayer(
+              player: goalkeeper['player'],
+              left: pitchWidth / 2,
+              top: isHomeTeam ? pitchHeight * 0.95 : pitchHeight * 0.05, // Home alta, Away üste
+              isHome: isHomeTeam,
+            ),
+          );
+        }
+      return playerWidgets; // Sadece kaleciyi (veya boş listeyi) döndür.
     }
     
-    // 2. Oyuncuları grid'deki satır ve sütun numaralarına göre grupla ve maksimum değerleri bul.
+    // 3. Oyuncuları API'den gelen 'grid' verisindeki satır numarasına göre grupla.
     final Map<int, List<Map<String, dynamic>>> playersByRow = {};
     int maxRow = 0;
-    int maxCol = 0;
 
     for (var p in outfieldPlayers) {
       final parts = (p['player']['grid'] as String).split(':');
       final row = int.tryParse(parts[0]) ?? 0;
-      final col = int.tryParse(parts[1]) ?? 0;
-
+      
       if (row > 0) {
-        if (!playersByRow.containsKey(row)) {
-          playersByRow[row] = [];
-        }
+        if (!playersByRow.containsKey(row)) playersByRow[row] = [];
         playersByRow[row]!.add(p['player']);
         if (row > maxRow) maxRow = row;
-        if (col > maxCol) maxCol = col;
       }
     }
     
-    // 3. Kaleciyi her zaman standart yerine koy.
+    // Herhangi bir sıradaki maksimum oyuncu sayısını bul (formasyonun en geniş hattı, örn: 5-4-1 için 5).
+    final int maxPlayersPerLine = playersByRow.values.map((line) => line.length).reduce(math.max);
+
+    // 4. Kaleciyi her zaman standart pozisyonuna yerleştir.
     if (goalkeeper != null) {
       playerWidgets.add(
         _buildPlayer(
@@ -180,55 +194,57 @@ class MatchLineupsView extends StatelessWidget {
       );
     }
     
-    // 4. Oynanabilir alanın sınırlarını ve dikey adımları tanımla.
-    const double horizontalPadding = 0.08; // Kenarlardan %8 boşluk
-    const double verticalPadding = 0.12;   // Kale arkasından %12 boşluk
-    const double midFieldBuffer = 0.05;   // Orta saha çizgisinden %5 tampon
+    // 5. Oynanabilir alanın sınırlarını ve dikey mesafeleri tanımla.
+    const double horizontalPadding = 0.05; // Kenarlardan %5 boşluk.
+    const double verticalPadding = 0.12;   // Kale arkasından %12 boşluk.
+    const double midFieldBuffer = 0.05;    // Orta saha çizgisinden %5 tampon.
 
     final playableWidth = pitchWidth * (1 - 2 * horizontalPadding);
     final startX = pitchWidth * horizontalPadding;
     
-    // 5. Her satırdaki (line) oyuncuları yerleştir.
+    // 6. Her bir sırayı (defans, orta saha vb.) sahanın üzerine çiz.
     final sortedRows = playersByRow.keys.toList()..sort();
 
-    for (var row in sortedRows) {
-      final playersInRow = playersByRow[row]!;
+    for (var rowKey in sortedRows) {
+      final playersInRow = playersByRow[rowKey]!;
+      // Oyuncuları sütun numarasına göre soldan sağa sırala, bu yerleşimin tutarlı olmasını sağlar.
+      playersInRow.sort((a, b) {
+          final colA = int.tryParse((a['grid'] as String).split(':')[1]) ?? 0;
+          final colB = int.tryParse((b['grid'] as String).split(':')[1]) ?? 0;
+          return colA.compareTo(colB);
+      });
       
-      // Dikey pozisyonu (Y) hesapla.
-      final double verticalRatio = (row - 1) / (maxRow > 1 ? maxRow - 1 : 1);
-      
-      double y;
-      if (isHomeTeam) {
-        // Ev sahibi (alt yarı saha): Defans (row 1) kaleye yakın, forvet (maxRow) orta sahaya yakın olmalı.
-        final homeDefensiveLineY = pitchHeight * (1 - verticalPadding);
-        final homeOffensiveLineY = (pitchHeight / 2) + (pitchHeight * midFieldBuffer);
-        final homePlayableHeight = homeDefensiveLineY - homeOffensiveLineY;
-        y = homeDefensiveLineY - (verticalRatio * homePlayableHeight);
-      } else {
-        // Deplasman (üst yarı saha): Defans (row 1) kaleye yakın, forvet (maxRow) orta sahaya yakın olmalı.
-        final awayDefensiveLineY = pitchHeight * verticalPadding;
-        final awayOffensiveLineY = (pitchHeight / 2) - (pitchHeight * midFieldBuffer);
-        final awayPlayableHeight = awayOffensiveLineY - awayDefensiveLineY;
-        y = awayDefensiveLineY + (verticalRatio * awayPlayableHeight);
+      final int numPlayersInRow = playersInRow.length;
+
+      // Dikey pozisyonu (Y ekseni) hesapla.
+      final double verticalRatio = (rowKey - 1) / (maxRow > 1 ? maxRow - 1 : 1);
+      final double y;
+      if (isHomeTeam) { // Ev Sahibi Takım (Alt Yarı Saha)
+        final defensiveY = pitchHeight * (1 - verticalPadding);
+        final offensiveY = (pitchHeight / 2) + (pitchHeight * midFieldBuffer);
+        y = defensiveY - (verticalRatio * (defensiveY - offensiveY));
+      } else { // Deplasman Takımı (Üst Yarı Saha)
+        final defensiveY = pitchHeight * verticalPadding;
+        final offensiveY = (pitchHeight / 2) - (pitchHeight * midFieldBuffer);
+        y = defensiveY + (verticalRatio * (offensiveY - defensiveY));
       }
 
-      // Yatay pozisyonu (X) hesapla.
-      for (int i = 0; i < playersInRow.length; i++) {
+      // Yatay pozisyonu (X ekseni) DİNAMİK olarak hesapla.
+      // Sıradaki oyuncu sayısına göre hattın genişliğini ve başlangıç noktasını ayarla.
+      // Bu sayede 3'lü orta saha, 5'li defanstan daha dar ve merkezi olur.
+      final double lineIndent = (1 - (numPlayersInRow / maxPlayersPerLine)) * playableWidth / 2.0;
+      final double currentStartX = startX + lineIndent;
+      final double currentPlayableWidth = playableWidth - (2 * lineIndent);
+      
+      for (int i = 0; i < numPlayersInRow; i++) {
         final player = playersInRow[i];
-        final col = int.tryParse((player['grid'] as String).split(':')[1]) ?? 0;
         
-        // DÜZELTME: Oyuncuları o hattaki sayısına göre değil, genel maksimum sütun sayısına göre yerleştir.
-        // Bu, kanat oyuncularının kenarlara daha yakın olmasını sağlar.
-        final double horizontalRatio = (col - 1) / (maxCol > 1 ? maxCol - 1 : 1);
-        final double x = startX + (horizontalRatio * playableWidth);
+        // Oyuncuları bulundukları hatta eşit aralıklarla dağıt.
+        final double horizontalRatio = (numPlayersInRow > 1) ? i / (numPlayersInRow - 1) : 0.5;
+        final double x = currentStartX + (horizontalRatio * currentPlayableWidth);
         
         playerWidgets.add(
-          _buildPlayer(
-            player: player,
-            left: x,
-            top: y,
-            isHome: isHomeTeam,
-          ),
+          _buildPlayer(player: player, left: x, top: y, isHome: isHomeTeam),
         );
       }
     }
@@ -236,7 +252,7 @@ class MatchLineupsView extends StatelessWidget {
     return playerWidgets;
   }
 
-  // Oyuncu widget'ını oluşturan metot.
+  // Oyuncu widget'ını oluşturan metot (Stil iyileştirmeleri yapıldı).
   Widget _buildPlayer({
     required dynamic player,
     required double left,
@@ -245,7 +261,7 @@ class MatchLineupsView extends StatelessWidget {
   }) {
     final playerName = player['name'] as String? ?? 'Bilinmiyor';
     final playerWidgetWidth = 80.0;
-    final playerWidgetHeight = 70.0; 
+    final playerWidgetHeight = 65.0; // Yüksekliği biraz azalttık.
     
     return Positioned(
       left: left - (playerWidgetWidth / 2),
@@ -257,7 +273,7 @@ class MatchLineupsView extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              padding: const EdgeInsets.all(5),
+              padding: const EdgeInsets.all(6), // Numarayı biraz daha büyük göstermek için
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: isHome 
@@ -269,26 +285,27 @@ class MatchLineupsView extends StatelessWidget {
                 shape: BoxShape.circle,
                 border: Border.all(color: Colors.white.withOpacity(0.9), width: 1.5),
                 boxShadow: [
-                  BoxShadow(color: Colors.black.withOpacity(0.4), blurRadius: 4, spreadRadius: 1)
+                  BoxShadow(color: Colors.black.withOpacity(0.5), blurRadius: 4, spreadRadius: 1)
                 ]
               ),
               child: Text(
                 player['number']?.toString() ?? '?',
-                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
               ),
             ),
-            const SizedBox(height: 3),
+            const SizedBox(height: 4),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
               decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.6),
+                color: Colors.black.withOpacity(0.65),
                 borderRadius: BorderRadius.circular(4),
               ),
               child: Text(
                 playerName.split(' ').last,
                 textAlign: TextAlign.center,
-                style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                style: const TextStyle(color: Colors.white, fontSize: 10.5, fontWeight: FontWeight.bold),
                 overflow: TextOverflow.ellipsis,
+                maxLines: 1,
               ),
             ),
           ],
@@ -297,7 +314,6 @@ class MatchLineupsView extends StatelessWidget {
     );
   }
 
-  // Yedek oyuncular listesi (Değişiklik yok)
   Widget _buildSubstitutes(BuildContext context, Map<String, dynamic> homeTeam, Map<String, dynamic> awayTeam) {
     final homeSubstitutes = (homeTeam['substitutes'] as List<dynamic>?) ?? [];
     final awaySubstitutes = (awayTeam['substitutes'] as List<dynamic>?) ?? [];
