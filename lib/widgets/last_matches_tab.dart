@@ -1,26 +1,11 @@
-// lib/widgets/last_matches_tab.dart
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:math';
 import '../data_service.dart';
 import '../services/team_name_service.dart';
 import '../services/logo_service.dart';
-import 'expandable_league_card.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../utils/dialog_utils.dart';
-
-class CardColorScheme {
-  final Color background;
-  final Color onBackground;
-  final Color primary;
-
-  CardColorScheme({
-    required this.background,
-    required this.onBackground,
-    required this.primary,
-  });
-}
 
 class LastMatchesTab extends StatefulWidget {
   final List<String> favoriteLeagues;
@@ -41,16 +26,6 @@ class _LastMatchesTabState extends State<LastMatchesTab> with AutomaticKeepAlive
   Map<String, List<Map<String, dynamic>>> _matchesData = {};
   String? _expandedLeagueName;
 
-  final Map<String, List<Color>> _leagueCardGradients = {};
-  static final List<List<Color>> _gradientPalettes = [
-    [const Color(0xfff59e0b), const Color(0xffef4444), const Color(0xff8b5cf6), const Color(0xff3b82f6)],
-    [const Color(0xff22d3ee), const Color(0xff0e7490), const Color(0xff4c1d95)],
-    [const Color(0xffa3e635), const Color(0xff4d7c0f), const Color(0xff166534)],
-    [const Color(0xfff97316), const Color(0xff9f1239), const Color(0xff4a044e)],
-    [const Color(0xffec4899), const Color(0xff7e22ce), const Color(0xff2563eb)],
-  ];
-
-
   @override
   void initState() {
     super.initState();
@@ -60,13 +35,7 @@ class _LastMatchesTabState extends State<LastMatchesTab> with AutomaticKeepAlive
       setState(() { _isLoading = false; });
     }
   }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _generateCardGradients();
-  }
-
+  
   @override
   void didUpdateWidget(covariant LastMatchesTab oldWidget) {
     super.didUpdateWidget(oldWidget);
@@ -81,22 +50,9 @@ class _LastMatchesTabState extends State<LastMatchesTab> with AutomaticKeepAlive
     return true;
   }
   
-  void _generateCardGradients() {
-    final List<List<Color>> palette = List.from(_gradientPalettes);
-    palette.shuffle(Random()); 
-
-    _leagueCardGradients.clear();
-    for (int i = 0; i < widget.favoriteLeagues.length; i++) {
-      final leagueName = widget.favoriteLeagues[i];
-      _leagueCardGradients[leagueName] = palette[i % palette.length];
-    }
-  }
-
   Future<void> _fetchData() async {
     if (!mounted) return;
     setState(() { _isLoading = true; _errorMessage = null; _matchesData.clear(); _expandedLeagueName = null; });
-    
-    _generateCardGradients();
     
     try {
       final futures = widget.favoriteLeagues.map((leagueName) async {
@@ -170,58 +126,49 @@ class _LastMatchesTabState extends State<LastMatchesTab> with AutomaticKeepAlive
 
   void _handleExpansion(String leagueName) {
     setState(() {
-      _expandedLeagueName = (_expandedLeagueName == leagueName) ? null : leagueName;
+      if (_expandedLeagueName == leagueName) {
+        _expandedLeagueName = null;
+      } else {
+        _expandedLeagueName = leagueName;
+      }
     });
   }
 
   Widget _buildCardHeader(String leagueName) {
-    final bool isExpanded = _expandedLeagueName == leagueName;
-    // YENİ: Logo URL'si servisten alınıyor.
     final String? logoUrl = LogoService.getLeagueLogoUrl(leagueName);
+    final bool isExpanded = _expandedLeagueName == leagueName;
 
-    return Padding( padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-      child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
-        // GÜNCELLEME: Image.asset yerine CachedNetworkImage kullanılıyor.
-        SizedBox(
-          width: 34,
-          height: 34,
-          child: logoUrl != null
-              ? CachedNetworkImage(
-                  imageUrl: logoUrl,
-                  placeholder: (context, url) => const Center(child: CircularProgressIndicator(strokeWidth: 2.0)),
-                  errorWidget: (context, url, error) => const Icon(Icons.shield_outlined, size: 34),
-                  fit: BoxFit.contain,
-                )
-              : const Icon(Icons.shield_outlined, size: 34),
+    return InkWell(
+      onTap: () => _handleExpansion(leagueName),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            SizedBox(
+              width: 34,
+              height: 34,
+              child: logoUrl != null
+                  ? CachedNetworkImage(
+                      imageUrl: logoUrl,
+                      placeholder: (context, url) => const Center(child: CircularProgressIndicator(strokeWidth: 2.0)),
+                      errorWidget: (context, url, error) => const Icon(Icons.shield_outlined, size: 34),
+                      fit: BoxFit.contain,
+                    )
+                  : const Icon(Icons.shield_outlined, size: 34),
+            ),
+            const SizedBox(width: 10),
+            Expanded(child: Text(leagueName, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600), textAlign: TextAlign.center, overflow: TextOverflow.ellipsis)),
+            Icon(
+              isExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ],
         ),
-        const SizedBox(width: 10),
-        Expanded(child: Text(leagueName, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600), textAlign: TextAlign.center, overflow: TextOverflow.ellipsis)),
-        Icon(isExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down)
-      ]));
+      ),
+    );
   }
   
-  Widget _buildMatchRowWidget(Map<String, dynamic> match, String leagueName) {
-    final theme = Theme.of(context);
-    String home = match['HomeTeam']?.toString() ?? 'Ev', away = match['AwayTeam']?.toString() ?? 'Dep';
-    String? homeLogo = LogoService.getTeamLogoUrl(home, leagueName), awayLogo = LogoService.getTeamLogoUrl(away, leagueName);
-    TextStyle teamNameStyle = theme.textTheme.bodyMedium!.copyWith(fontWeight: FontWeight.w500);
-    return Padding(padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 8.0), child: Row(children: [
-      Expanded(flex: 5, child: Row(children: [
-        if (homeLogo != null) CachedNetworkImage(imageUrl: homeLogo, width: 24, height: 24, fit: BoxFit.contain) else const Icon(Icons.shield_outlined, size: 24),
-        const SizedBox(width: 8), Expanded(child: Text(TeamNameService.getCorrectedTeamName(home), style: teamNameStyle, overflow: TextOverflow.ellipsis)),
-      ])),
-      Expanded(flex: 3, child: Column(mainAxisSize: MainAxisSize.min, children: [
-        Text('${match['FTHG'] ?? '?'} - ${match['FTAG'] ?? '?'}', style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold)),
-        if (match['Date'] != null) ...[const SizedBox(height: 2), Text(match['Date'].toString(), style: theme.textTheme.bodySmall)]
-      ])),
-      Expanded(flex: 5, child: Row(mainAxisAlignment: MainAxisAlignment.end, children: [
-        Expanded(child: Text(TeamNameService.getCorrectedTeamName(away), style: teamNameStyle, overflow: TextOverflow.ellipsis, textAlign: TextAlign.end,)),
-        const SizedBox(width: 8),
-        if (awayLogo != null) CachedNetworkImage(imageUrl: awayLogo, width: 24, height: 24, fit: BoxFit.contain) else const Icon(Icons.shield_outlined, size: 24),
-      ])),
-    ]));
-  }
-
   void _showMatchDetailsPopup(BuildContext context, Map<String, dynamic> matchData, String leagueName) {
     final theme = Theme.of(context);
     String originalHomeTeam = matchData['HomeTeam']?.toString() ?? 'Ev Sahibi';
@@ -310,57 +257,122 @@ class _LastMatchesTabState extends State<LastMatchesTab> with AutomaticKeepAlive
     );
   }
 
-  Widget _buildMatchList(List<Map<String, dynamic>> matches, String leagueName) {
-    if (matches.isEmpty) return const Padding(padding: EdgeInsets.all(16.0), child: Center(child: Text("Maç bulunamadı.")));
-    return ListView.separated(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      physics: const NeverScrollableScrollPhysics(), shrinkWrap: true,
-      itemCount: matches.length,
-      itemBuilder: (c, i) => InkWell(
-          onTap: () { HapticFeedback.lightImpact(); _showMatchDetailsPopup(c, matches[i], leagueName); },
-          child: _buildMatchRowWidget(matches[i], leagueName)),
-      separatorBuilder: (c, i) => const Divider(height: 1, indent: 20, endIndent: 20),
+  /// YENİ TASARIM: Maç satırı widget'ı Figma prensiplerine göre güncellendi.
+  /// Logolar skorun yanına alındı ve hizalamalar iyileştirildi.
+  Widget _buildCompactMatchRow(Map<String, dynamic> match, String leagueName) {
+    final theme = Theme.of(context);
+    String home = match['HomeTeam']?.toString() ?? 'Ev';
+    String away = match['AwayTeam']?.toString() ?? 'Dep';
+    String? homeLogo = LogoService.getTeamLogoUrl(home, leagueName);
+    String? awayLogo = LogoService.getTeamLogoUrl(away, leagueName);
+    TextStyle teamNameStyle = theme.textTheme.bodyMedium!.copyWith(fontWeight: FontWeight.w500);
+    
+    return InkWell(
+      onTap: () {
+        HapticFeedback.lightImpact();
+        _showMatchDetailsPopup(context, match, leagueName);
+      },
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 16.0),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            // Ev Sahibi Takım Adı
+            Expanded(
+              child: Text(
+                TeamNameService.getCorrectedTeamName(home),
+                style: teamNameStyle,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.right,
+              ),
+            ),
+            
+            // Merkezi Skor Bloğu
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12.0),
+              child: Row(
+                children: [
+                  if (homeLogo != null)
+                    CachedNetworkImage(imageUrl: homeLogo, width: 28, height: 28, fit: BoxFit.contain)
+                  else
+                    const Icon(Icons.shield_outlined, size: 28),
+                  
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 10.0),
+                    child: Text(
+                      '${match['FTHG'] ?? '?'} - ${match['FTAG'] ?? '?'}',
+                      style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+
+                  if (awayLogo != null)
+                    CachedNetworkImage(imageUrl: awayLogo, width: 28, height: 28, fit: BoxFit.contain)
+                  else
+                    const Icon(Icons.shield_outlined, size: 28),
+                ],
+              ),
+            ),
+
+            // Deplasman Takımı Adı
+            Expanded(
+              child: Text(
+                TeamNameService.getCorrectedTeamName(away),
+                style: teamNameStyle,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.left,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    final theme = Theme.of(context);
-
+    
     if (_isLoading) return const Center(child: CircularProgressIndicator());
     if (widget.favoriteLeagues.isEmpty) return const Center(child: Text("Favori lig seçin."));
     if (_errorMessage != null && _matchesData.isEmpty) return Center(child: Padding(padding: const EdgeInsets.all(16.0), child: Text("Bazı ligler yüklenemedi:\n$_errorMessage", textAlign: TextAlign.center)));
     
-    final defaultGradient = _gradientPalettes.first;
-
     return ListView.builder(
       key: const PageStorageKey<String>('last_matches_list'),
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 12.0),
       itemCount: widget.favoriteLeagues.length,
       itemBuilder: (context, index) {
         final leagueName = widget.favoriteLeagues[index];
         final allMatches = _matchesData[leagueName] ?? [];
         
-        final cardGradient = _leagueCardGradients[leagueName] ?? defaultGradient;
-
         if (allMatches.isEmpty) {
-          return Card(
-            margin: const EdgeInsets.only(bottom: 12),
-            child: Padding( padding: const EdgeInsets.all(16.0), child: Text("$leagueName için veri bulunamadı veya yükleniyor...", textAlign: TextAlign.center),),
-          );
+          return const SizedBox.shrink();
         }
         
-        final collapsedList = allMatches.take(3).toList();
-        final expandedList = allMatches.take(10).toList();
-        
-        return ExpandableLeagueCard(
-          header: _buildCardHeader(leagueName),
-          collapsedChild: _buildMatchList(collapsedList, leagueName),
-          expandedChild: _buildMatchList(expandedList, leagueName),
-          isExpanded: _expandedLeagueName == leagueName,
-          onTapHeader: () => _handleExpansion(leagueName),
-          gradientColors: cardGradient,
+        final bool isExpanded = _expandedLeagueName == leagueName;
+        final matchesToShow = allMatches.take(isExpanded ? 10 : 3).toList();
+
+        return Card(
+          margin: const EdgeInsets.only(bottom: 12.0),
+          clipBehavior: Clip.antiAlias,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _buildCardHeader(leagueName),
+              const Divider(height: 1, thickness: 0.5),
+              AnimatedSize(
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeInOut,
+                child: ListView.separated(
+                  physics: const NeverScrollableScrollPhysics(),
+                  shrinkWrap: true,
+                  itemCount: matchesToShow.length,
+                  itemBuilder: (c, i) => _buildCompactMatchRow(matchesToShow[i], leagueName),
+                  separatorBuilder: (c, i) => const Divider(height: 1, indent: 16, endIndent: 16),
+                ),
+              ),
+            ],
+          ),
         );
       },
     );

@@ -1,15 +1,10 @@
-// lib/widgets/standings_tab.dart
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'dart:math';
 import '../data_service.dart';
 import '../services/team_name_service.dart';
 import '../services/logo_service.dart';
-import 'expandable_league_card.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../utils/dialog_utils.dart';
-import 'league_standings_tab_content.dart';
 import 'league_matches_tab_content.dart';
 
 class StandingsTab extends StatefulWidget {
@@ -31,15 +26,6 @@ class _StandingsTabState extends State<StandingsTab> with AutomaticKeepAliveClie
   Map<String, List<Map<String, dynamic>>> _standingsData = {};
   String? _expandedLeagueName;
 
-  final Map<String, List<Color>> _leagueCardGradients = {};
-  static final List<List<Color>> _gradientPalettes = [
-    [const Color(0xffa3e635), const Color(0xff4d7c0f), const Color(0xff166534)],
-    [const Color(0xffec4899), const Color(0xff7e22ce), const Color(0xff2563eb)],
-    [const Color(0xfff59e0b), const Color(0xffef4444), const Color(0xff8b5cf6), const Color(0xff3b82f6)],
-    [const Color(0xfff97316), const Color(0xff9f1239), const Color(0xff4a044e)],
-    [const Color(0xff22d3ee), const Color(0xff0e7490), const Color(0xff4c1d95)],
-  ];
-
   @override
   void initState() {
     super.initState();
@@ -48,12 +34,6 @@ class _StandingsTabState extends State<StandingsTab> with AutomaticKeepAliveClie
     } else {
       setState(() { _isLoading = false; });
     }
-  }
-  
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _generateCardGradients();
   }
 
   @override
@@ -74,22 +54,9 @@ class _StandingsTabState extends State<StandingsTab> with AutomaticKeepAliveClie
     return true;
   }
 
-  void _generateCardGradients() {
-    final List<List<Color>> palette = List.from(_gradientPalettes);
-    palette.shuffle(Random());
-
-    _leagueCardGradients.clear();
-    for (int i = 0; i < widget.favoriteLeagues.length; i++) {
-      final leagueName = widget.favoriteLeagues[i];
-      _leagueCardGradients[leagueName] = palette[i % palette.length];
-    }
-  }
-
   Future<void> _fetchData() async {
     if(!mounted) return;
     setState(() { _isLoading = true; _errorMessage = null; _standingsData.clear(); _expandedLeagueName = null; });
-    
-    _generateCardGradients();
     
     try {
       final futures = widget.favoriteLeagues.map((leagueName) async {
@@ -256,7 +223,7 @@ class _StandingsTabState extends State<StandingsTab> with AutomaticKeepAliveClie
     const double logoSize = 64.0;
 
     String halfTimeScoreInfo = "";
-    if (htHomeGoals != null && htHomeGoals.isNotEmpty && htHomeGoals != 'NA' && htAwayGoals != null && htAwayGoals.isNotEmpty && htAwayGoals != 'NA') {
+    if (htHomeGoals != null && htHomeGoals.isNotEmpty && htHomeGoals.isNotEmpty && htAwayGoals != null && htAwayGoals.isNotEmpty) {
       halfTimeScoreInfo = "(İY: $htHomeGoals-$htAwayGoals)";
     }
 
@@ -306,7 +273,7 @@ class _StandingsTabState extends State<StandingsTab> with AutomaticKeepAliveClie
           Padding(padding: const EdgeInsets.symmetric(vertical: 16.0),
             child: Row(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.center, children: <Widget>[
                 Expanded(child: Column(mainAxisSize: MainAxisSize.min, children: [
-                  if (homeLogoUrl != null) CachedNetworkImage(imageUrl: homeLogoUrl, width: logoSize, height: logoSize, fit: BoxFit.contain, errorWidget: (c,u,e)=>Icon(Icons.shield_outlined, size: logoSize)) else Icon(Icons.shield_outlined, size: logoSize),
+                  if (homeLogoUrl != null) CachedNetworkImage(imageUrl: homeLogoUrl, width: logoSize, height: logoSize, fit: BoxFit.contain) else Icon(Icons.shield_outlined, size: logoSize),
                   const SizedBox(height: 8), Text(homeTeamDisplay, textAlign: TextAlign.center, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis, maxLines: 2),
                 ])),
                 Padding(padding: const EdgeInsets.symmetric(horizontal: 12.0), child: Column(children: [
@@ -314,7 +281,7 @@ class _StandingsTabState extends State<StandingsTab> with AutomaticKeepAliveClie
                     if (halfTimeScoreInfo.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 4.0), child: Text(halfTimeScoreInfo, style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant.withOpacity(0.7)))),
                   ])),
                 Expanded(child: Column(mainAxisSize: MainAxisSize.min, children: [
-                  if (awayLogoUrl != null) CachedNetworkImage(imageUrl: awayLogoUrl, width: logoSize, height: logoSize, fit: BoxFit.contain, errorWidget: (c,u,e)=>Icon(Icons.shield_outlined, size: logoSize)) else Icon(Icons.shield_outlined, size: logoSize),
+                  if (awayLogoUrl != null) CachedNetworkImage(imageUrl: awayLogoUrl, width: logoSize, height: logoSize, fit: BoxFit.contain) else Icon(Icons.shield_outlined, size: logoSize),
                   const SizedBox(height: 8), Text(awayTeamDisplay, textAlign: TextAlign.center, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis, maxLines: 2),
                 ])),
               ]),
@@ -329,41 +296,47 @@ class _StandingsTabState extends State<StandingsTab> with AutomaticKeepAliveClie
   
   Widget _buildCardHeader(String leagueName) {
     final bool isExpanded = _expandedLeagueName == leagueName;
-    // YENİ: Logo URL'si servisten alınıyor.
     final String? logoUrl = LogoService.getLeagueLogoUrl(leagueName);
 
-    return Padding( padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-      child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
-        // GÜNCELLEME: Image.asset yerine CachedNetworkImage kullanılıyor.
-        SizedBox(
-          width: 34,
-          height: 34,
-          child: logoUrl != null
-              ? CachedNetworkImage(
-                  imageUrl: logoUrl,
-                  placeholder: (context, url) => const Center(child: CircularProgressIndicator(strokeWidth: 2.0)),
-                  errorWidget: (context, url, error) => const Icon(Icons.shield_outlined, size: 34),
-                  fit: BoxFit.contain,
-                )
-              : const Icon(Icons.shield_outlined, size: 34),
+    return InkWell(
+      onTap: () => _handleExpansion(leagueName),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            SizedBox(
+              width: 34,
+              height: 34,
+              child: logoUrl != null
+                  ? CachedNetworkImage(
+                      imageUrl: logoUrl,
+                      placeholder: (context, url) => const Center(child: CircularProgressIndicator(strokeWidth: 2.0)),
+                      errorWidget: (context, url, error) => const Icon(Icons.shield_outlined, size: 34),
+                      fit: BoxFit.contain,
+                    )
+                  : const Icon(Icons.shield_outlined, size: 34),
+            ),
+            const SizedBox(width: 10),
+            Expanded(child: Text(leagueName, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600), textAlign: TextAlign.center, overflow: TextOverflow.ellipsis)),
+            Icon(
+              isExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ],
         ),
-        const SizedBox(width: 10),
-        Expanded(child: Text(leagueName, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600), textAlign: TextAlign.center, overflow: TextOverflow.ellipsis)),
-        Icon(isExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down)
-      ]));
+      ),
+    );
   }
-  
+
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    final theme = Theme.of(context);
     
     if (_isLoading) return const Center(child: CircularProgressIndicator());
     if (widget.favoriteLeagues.isEmpty) return const Center(child: Text("Favori lig seçin."));
     if (_errorMessage != null && _standingsData.isEmpty) return Center(child: Padding(padding: const EdgeInsets.all(16.0), child: Text("Bazı ligler yüklenemedi:\n$_errorMessage", textAlign: TextAlign.center)));
     
-    final defaultGradient = _gradientPalettes.first;
-
     return ListView.builder(
       key: const PageStorageKey<String>('standings_list'),
       padding: const EdgeInsets.all(12),
@@ -371,7 +344,6 @@ class _StandingsTabState extends State<StandingsTab> with AutomaticKeepAliveClie
       itemBuilder: (context, index) {
         final leagueName = widget.favoriteLeagues[index];
         final fullStandings = _standingsData[leagueName] ?? [];
-        final cardGradient = _leagueCardGradients[leagueName] ?? defaultGradient;
 
         if (fullStandings.isEmpty) {
           return Card(
@@ -380,54 +352,285 @@ class _StandingsTabState extends State<StandingsTab> with AutomaticKeepAliveClie
           );
         }
 
-        Widget collapsedChild = Padding(
-          padding: const EdgeInsets.fromLTRB(16.0, 0, 16.0, 8.0), 
-          child: Column(children: [
-              const SizedBox(height: 8), 
-              Row( children: [
-                  SizedBox(width: 48, child: Text("# Takım", style: theme.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.bold))), const Spacer(),
-                  SizedBox(width: 25, child: Text("G", textAlign: TextAlign.center, style: theme.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.bold))),
-                  SizedBox(width: 25, child: Text("B", textAlign: TextAlign.center, style: theme.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.bold))),
-                  SizedBox(width: 25, child: Text("M", textAlign: TextAlign.center, style: theme.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.bold))),
-                  SizedBox(width: 30, child: Text("P", textAlign: TextAlign.center, style: theme.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.bold))),
-                ]),
-              const Divider(height: 10),
-              ...fullStandings.take(3).map((team) {
-                return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4.0),
-                  child: Row(children: [
-                      SizedBox(width: 20, child: Text("${team['pos']}.", style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold))),
-                      if (team['logo_url'] != null) CachedNetworkImage(imageUrl: team['logo_url'], width: 20, height: 20, fit: BoxFit.contain) else const Icon(Icons.shield_outlined, size: 20),
-                      const SizedBox(width: 8), Expanded(child: Text(team['teamDisplayName'], style: theme.textTheme.bodyMedium, overflow: TextOverflow.ellipsis)),
-                      SizedBox(width: 25, child: Text(team['g'].toString(), textAlign: TextAlign.center, style: theme.textTheme.bodyMedium)),
-                      SizedBox(width: 25, child: Text(team['b'].toString(), textAlign: TextAlign.center, style: theme.textTheme.bodyMedium)),
-                      SizedBox(width: 25, child: Text(team['m'].toString(), textAlign: TextAlign.center, style: theme.textTheme.bodyMedium)),
-                      SizedBox(width: 30, child: Text(team['pts'].toString(), textAlign: TextAlign.center, style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold, color: theme.colorScheme.primary))),
-                    ]),
-                );
-              }).toList(),
-            ]),
-        );
-        
-        Widget expandedChild = Padding(
-          padding: const EdgeInsets.fromLTRB(4, 0, 4, 12),
-          child: StandingsTableWidget(
-            theme: Theme.of(context),
-            standingsData: fullStandings,
-            onTeamTap: (ctx, teamData) => _showTeamRecentMatchesPopup(ctx, teamData, leagueName),
-            leagueName: leagueName,
-          )
-        );
-        
-        return ExpandableLeagueCard(
-          header: _buildCardHeader(leagueName),
-          collapsedChild: collapsedChild, 
-          expandedChild: expandedChild,
-          isExpanded: _expandedLeagueName == leagueName,
-          onTapHeader: () => _handleExpansion(leagueName),
-          gradientColors: cardGradient,
+        final isExpanded = _expandedLeagueName == leagueName;
+
+        return Card(
+          margin: const EdgeInsets.only(bottom: 12.0),
+          clipBehavior: Clip.antiAlias,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _buildCardHeader(leagueName),
+              const Divider(height: 1, thickness: 0.5),
+              AnimatedSize(
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.fastOutSlowIn,
+                child: isExpanded 
+                  ? _buildExpandedStandings(fullStandings, leagueName)
+                  : _buildCollapsedStandings(fullStandings.take(3).toList()),
+              ),
+            ],
+          ),
         );
       },
+    );
+  }
+
+  Widget _buildCollapsedStandings(List<Map<String, dynamic>> topTeams) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+      child: Column(
+        children: topTeams.map((team) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4.0),
+            child: Row(
+              children: [
+                Text("${team['pos']}.", style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold)),
+                const SizedBox(width: 8),
+                if (team['logo_url'] != null)
+                  CachedNetworkImage(imageUrl: team['logo_url'], width: 20, height: 20, fit: BoxFit.contain)
+                else
+                  const Icon(Icons.shield_outlined, size: 20),
+                const SizedBox(width: 8),
+                Expanded(child: Text(team['teamDisplayName'], style: theme.textTheme.bodyMedium, overflow: TextOverflow.ellipsis)),
+                Text(team['pts'].toString(), style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold, color: theme.colorScheme.primary)),
+              ],
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  Widget _buildExpandedStandings(List<Map<String, dynamic>> standings, String leagueName) {
+    final theme = Theme.of(context);
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildFixedColumn(standings, leagueName),
+        Expanded(
+          child: ShaderMask(
+            shaderCallback: (Rect bounds) {
+              return LinearGradient(
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
+                // DÜZELTME: Gradyan renkleri temanın kart rengini kullanacak
+                colors: <Color>[
+                  theme.cardColor,
+                  theme.cardColor.withOpacity(0.0)
+                ],
+                // DÜZELTME: Solma efektinin başlangıç ve bitiş noktaları ayarlandı
+                stops: const [0.8, 1.0],
+              ).createShader(bounds);
+            },
+            // DÜZELTME: Blend modu dstIn olarak değiştirildi
+            blendMode: BlendMode.dstIn,
+            child: SingleChildScrollView(
+              // DÜZELTME: Kaydırma pozisyonu sorununu çözmek için Key eklendi
+              key: ValueKey(leagueName),
+              scrollDirection: Axis.horizontal,
+              child: _buildScrollableColumns(standings),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFixedColumn(List<Map<String, dynamic>> standings, String leagueName) {
+    final theme = Theme.of(context);
+    const double fixedWidth = 170.0;
+    const double rowHeight = 48.0;
+
+    return SizedBox(
+      width: fixedWidth,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            height: rowHeight,
+            padding: const EdgeInsets.symmetric(horizontal: 6.0),
+            decoration: BoxDecoration(border: Border(bottom: BorderSide(color: theme.dividerColor, width: 1.5))),
+            child: Row(
+              children: [
+                SizedBox(width: 28, child: _HeaderCell(text: '#')),
+                const SizedBox(width: 4),
+                Expanded(child: _HeaderCell(text: 'Takım', alignment: TextAlign.left)),
+              ],
+            ),
+          ),
+          Column(
+            children: standings.asMap().entries.map((entry) {
+              int index = entry.key;
+              Map<String, dynamic> teamData = entry.value;
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  InkWell(
+                    onTap: () => _showTeamRecentMatchesPopup(context, teamData, leagueName),
+                    child: Container(
+                      height: rowHeight,
+                      padding: const EdgeInsets.symmetric(horizontal: 6.0),
+                      child: Row(
+                        children: [
+                          SizedBox(width: 28, child: Text(teamData['pos'].toString(), textAlign: TextAlign.center, style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500))),
+                          const SizedBox(width: 4),
+                          if (teamData['logo_url'] != null)
+                            Padding(
+                              padding: const EdgeInsets.only(right: 8.0),
+                              child: CachedNetworkImage(imageUrl: teamData['logo_url'], width: 24, height: 24, fit: BoxFit.contain, errorWidget: (c, u, e) => const Icon(Icons.shield_outlined, size: 24)),
+                            )
+                          else
+                            const Padding(padding: const EdgeInsets.only(right: 8.0), child: Icon(Icons.shield, size: 24)),
+                          Expanded(child: Text(teamData['teamDisplayName'], overflow: TextOverflow.ellipsis, style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500))),
+                        ],
+                      ),
+                    ),
+                  ),
+                  if (index < standings.length - 1)
+                    const Divider(height: 1, indent: 16, endIndent: 0),
+                ],
+              );
+            }).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildScrollableColumns(List<Map<String, dynamic>> standings) {
+    final theme = Theme.of(context);
+    const double cellWidth = 40.0;
+    const double formCellWidth = 70.0;
+    const double rowHeight = 48.0;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          height: rowHeight,
+          decoration: BoxDecoration(border: Border(bottom: BorderSide(color: theme.dividerColor, width: 1.5))),
+          child: Row(
+            children: const [
+              SizedBox(width: cellWidth, child: _HeaderCell(text: 'O')),
+              SizedBox(width: cellWidth, child: _HeaderCell(text: 'G')),
+              SizedBox(width: cellWidth, child: _HeaderCell(text: 'B')),
+              SizedBox(width: cellWidth, child: _HeaderCell(text: 'M')),
+              SizedBox(width: cellWidth, child: _HeaderCell(text: 'P')),
+              SizedBox(width: cellWidth, child: _HeaderCell(text: 'AG')),
+              SizedBox(width: cellWidth, child: _HeaderCell(text: 'YG')),
+              SizedBox(width: cellWidth, child: _HeaderCell(text: 'A')),
+              SizedBox(width: formCellWidth, child: _HeaderCell(text: 'Son 3')),
+            ],
+          ),
+        ),
+        Column(
+          children: standings.asMap().entries.map((entry) {
+            int index = entry.key;
+            Map<String, dynamic> teamData = entry.value;
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SizedBox(
+                  height: rowHeight,
+                  child: Row(
+                    children: [
+                      SizedBox(width: cellWidth, child: Center(child: Text(teamData['om'].toString()))),
+                      SizedBox(width: cellWidth, child: Center(child: Text(teamData['g'].toString()))),
+                      SizedBox(width: cellWidth, child: Center(child: Text(teamData['b'].toString()))),
+                      SizedBox(width: cellWidth, child: Center(child: Text(teamData['m'].toString()))),
+                      SizedBox(width: cellWidth, child: Center(child: Text(teamData['pts'].toString(), style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold, color: theme.colorScheme.primary)))),
+                      SizedBox(width: cellWidth, child: Center(child: Text(teamData['ag'].toString()))),
+                      SizedBox(width: cellWidth, child: Center(child: Text(teamData['yg'].toString()))),
+                      SizedBox(width: cellWidth, child: Center(child: Text(teamData['a'].toString()))),
+                      SizedBox(width: formCellWidth, child: _buildFormIcons(teamData['formMatches'] ?? [])),
+                    ],
+                  ),
+                ),
+                if (index < standings.length - 1)
+                  const Divider(height: 1),
+              ],
+            );
+          }).toList(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFormIcons(List<dynamic> formMatches) {
+    if (formMatches.isEmpty) {
+      return const Text('-', textAlign: TextAlign.center);
+    }
+    List<Widget> formWidgets = [];
+    final matchesToDisplay = formMatches.take(3).toList();
+    for (int i = 0; i < 3; i++) {
+      if (i < matchesToDisplay.length) {
+        final match = matchesToDisplay[i];
+        IconData iconData;
+        Color iconColor;
+        String result = match['result']?.toString() ?? "";
+        if (result.startsWith("G")) {
+          iconData = Icons.check_circle;
+          iconColor = Colors.green.shade600;
+        } else if (result.startsWith("B")) {
+          iconData = Icons.remove_circle;
+          iconColor = Colors.grey.shade600;
+        } else if (result.startsWith("M")) {
+          iconData = Icons.cancel;
+          iconColor = Colors.red.shade600;
+        } else {
+          iconData = Icons.circle_outlined;
+          iconColor = Colors.grey.shade400;
+        }
+        
+        Widget iconWidget = Icon(iconData, color: iconColor, size: 16);
+
+        if (i == 0) {
+          iconWidget = Container(
+            padding: const EdgeInsets.all(1.5),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: iconColor.withOpacity(0.8), width: 1.5),
+            ),
+            child: iconWidget,
+          );
+        }
+
+        formWidgets.add(Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 1.5),
+          child: iconWidget,
+        ));
+
+      } else {
+        formWidgets.add(Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 1.5),
+          child: Icon(Icons.remove, color: Colors.grey.shade300, size: 16),
+        ));
+      }
+    }
+    return Row(mainAxisAlignment: MainAxisAlignment.center, children: formWidgets);
+  }
+}
+
+class _HeaderCell extends StatelessWidget {
+  final String text;
+  final TextAlign alignment;
+
+  const _HeaderCell({
+    required this.text,
+    this.alignment = TextAlign.center,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      text,
+      textAlign: alignment,
+      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            fontWeight: FontWeight.bold,
+            color: Theme.of(context).textTheme.bodySmall?.color?.withOpacity(0.7),
+          ),
     );
   }
 }
