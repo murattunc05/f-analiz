@@ -2,7 +2,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../data_service.dart';
+import '../services/logo_service.dart';
 import '../widgets/last_matches_tab.dart';
 import '../widgets/standings_tab.dart';
 import '../widgets/modern_header_widget.dart';
@@ -36,7 +38,6 @@ class _HomeFeedScreenState extends ConsumerState<HomeFeedScreen> with TickerProv
   @override
   void initState() {
     super.initState();
-    // DEĞİŞİKLİK: Sekme sayısı 2'ye düşürüldü
     _tabController = TabController(length: 2, vsync: this, initialIndex: 0);
     _loadLastFilter();
   }
@@ -85,13 +86,6 @@ class _HomeFeedScreenState extends ConsumerState<HomeFeedScreen> with TickerProv
     });
   }
   
-  String _getLeagueLogoAssetName(String leagueName) {
-    String normalized = leagueName.toLowerCase().replaceAll(' - ', '_').replaceAll(' ', '_');
-    const Map<String, String> charMap = { 'ı': 'i', 'ğ': 'g', 'ü': 'u', 'ş': 's', 'ö': 'o', 'ç': 'c', };
-    charMap.forEach((tr, en) => normalized = normalized.replaceAll(tr, en));
-    return 'assets/logos/leagues/${normalized.replaceAll(RegExp(r'[^\w_.-]'), '')}.png';
-  }
-  
   Widget _buildLeagueFilterBar() {
     final theme = Theme.of(context);
     if (_selectedLeagues.isEmpty) {
@@ -107,17 +101,27 @@ class _HomeFeedScreenState extends ConsumerState<HomeFeedScreen> with TickerProv
         child: Row(
           children: filterOptions.map((league) {
             final bool isSelected = _selectedLeagues.contains(league);
+            // YENİ: Logo URL'si servisten alınıyor.
+            final String? logoUrl = LogoService.getLeagueLogoUrl(league);
+
             return Padding(
               padding: const EdgeInsets.symmetric(horizontal: 4.0),
               child: ChoiceChip(
                 label: Text(league, style: TextStyle(color: isSelected ? theme.colorScheme.onPrimary : null)),
                 avatar: league == 'Tümü'
                     ? Icon(Icons.public, size: 18, color: isSelected ? theme.colorScheme.onPrimary : theme.colorScheme.onSurfaceVariant)
-                    : Image.asset(
-                        _getLeagueLogoAssetName(league),
+                    // GÜNCELLEME: Image.asset yerine CachedNetworkImage kullanılıyor.
+                    : SizedBox(
                         width: 20,
                         height: 20,
-                        errorBuilder: (c,e,s) => Icon(Icons.shield_outlined, size: 18, color: isSelected ? theme.colorScheme.onPrimary : theme.colorScheme.onSurfaceVariant),
+                        child: logoUrl != null
+                            ? CachedNetworkImage(
+                                imageUrl: logoUrl,
+                                placeholder: (context, url) => const Center(child: CircularProgressIndicator(strokeWidth: 1.5)),
+                                errorWidget: (context, url, error) => Icon(Icons.shield_outlined, size: 18, color: isSelected ? theme.colorScheme.onPrimary : theme.colorScheme.onSurfaceVariant),
+                                fit: BoxFit.contain,
+                              )
+                            : Icon(Icons.shield_outlined, size: 18, color: isSelected ? theme.colorScheme.onPrimary : theme.colorScheme.onSurfaceVariant),
                       ),
                 selected: isSelected,
                 onSelected: (selected) => _handleLeagueSelection(league),
@@ -164,7 +168,6 @@ class _HomeFeedScreenState extends ConsumerState<HomeFeedScreen> with TickerProv
                   indicatorColor: theme.colorScheme.primary,
                   labelColor: theme.colorScheme.primary,
                   unselectedLabelColor: theme.colorScheme.onSurfaceVariant.withOpacity(0.8),
-                  // DEĞİŞİKLİK: Sekme listesi güncellendi
                   tabs: const [
                     Tab(text: "Son Maçlar"),
                     Tab(text: "Puan Durumu"),
@@ -172,13 +175,11 @@ class _HomeFeedScreenState extends ConsumerState<HomeFeedScreen> with TickerProv
                 ),
               ),
             ),
-            // DEĞİŞİKLİK: Filtreleme çubuğu koşulsuz olarak gösteriliyor
             SliverToBoxAdapter(
               child: _buildLeagueFilterBar(),
             ),
           ];
         },
-        // DEĞİŞİKLİK: TabBarView içeriği güncellendi
         body: TabBarView(
           controller: _tabController,
           children: [

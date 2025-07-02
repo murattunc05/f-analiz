@@ -173,19 +173,27 @@ class _LastMatchesTabState extends State<LastMatchesTab> with AutomaticKeepAlive
       _expandedLeagueName = (_expandedLeagueName == leagueName) ? null : leagueName;
     });
   }
-  
-  String _getLeagueLogoAssetName(String leagueName) {
-    String normalized = leagueName.toLowerCase().replaceAll(' - ', '_').replaceAll(' ', '_');
-    const Map<String, String> charMap = { 'ı': 'i', 'ğ': 'g', 'ü': 'u', 'ş': 's', 'ö': 'o', 'ç': 'c', };
-    charMap.forEach((tr, en) => normalized = normalized.replaceAll(tr, en));
-    return 'assets/logos/leagues/${normalized.replaceAll(RegExp(r'[^\w_.-]'), '')}.png';
-  }
 
   Widget _buildCardHeader(String leagueName) {
     final bool isExpanded = _expandedLeagueName == leagueName;
+    // YENİ: Logo URL'si servisten alınıyor.
+    final String? logoUrl = LogoService.getLeagueLogoUrl(leagueName);
+
     return Padding( padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
       child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
-        Image.asset(_getLeagueLogoAssetName(leagueName), width: 34, height: 34, fit: BoxFit.contain, errorBuilder: (c, e, s) => const Icon(Icons.shield_outlined, size: 34)),
+        // GÜNCELLEME: Image.asset yerine CachedNetworkImage kullanılıyor.
+        SizedBox(
+          width: 34,
+          height: 34,
+          child: logoUrl != null
+              ? CachedNetworkImage(
+                  imageUrl: logoUrl,
+                  placeholder: (context, url) => const Center(child: CircularProgressIndicator(strokeWidth: 2.0)),
+                  errorWidget: (context, url, error) => const Icon(Icons.shield_outlined, size: 34),
+                  fit: BoxFit.contain,
+                )
+              : const Icon(Icons.shield_outlined, size: 34),
+        ),
         const SizedBox(width: 10),
         Expanded(child: Text(leagueName, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600), textAlign: TextAlign.center, overflow: TextOverflow.ellipsis)),
         Icon(isExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down)
