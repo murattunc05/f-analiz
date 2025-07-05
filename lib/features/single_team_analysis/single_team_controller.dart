@@ -94,7 +94,6 @@ class SingleTeamController extends StateNotifier<SingleTeamState> {
   }
 }
 
-final dataServiceProvider = Provider<DataService>((ref) => DataService());
 final singleTeamControllerProvider = StateNotifierProvider<SingleTeamController, SingleTeamState>(
   (ref) {
     return SingleTeamController(ref.watch(dataServiceProvider));

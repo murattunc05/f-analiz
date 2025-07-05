@@ -11,6 +11,7 @@ import 'package:futbol_analiz_app/widgets/detailed_match_list_content.dart';
 import 'package:futbol_analiz_app/widgets/h2h_popup_content.dart';
 import 'package:futbol_analiz_app/widgets/h2h_summary_card.dart';
 import 'package:futbol_analiz_app/widgets/league_selection_dialog_content.dart';
+import 'package:futbol_analiz_app/widgets/statistical_expectations_card.dart';
 import 'package:futbol_analiz_app/widgets/team_selection_dialog_content.dart';
 import 'package:futbol_analiz_app/widgets/team_setup_card_widget.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -302,7 +303,7 @@ class AdvancedComparisonScreen extends ConsumerWidget {
         team2Stats.value != null;
     
     final bool showAiButton = showResults &&
-        (controllerState.aiCommentary.asData?.value?.isEmpty ?? true) &&
+        (controllerState.aiCommentary.asData?.value.isEmpty ?? true) &&
         !controllerState.aiCommentary.isLoading;
     
     final bool showAiCard = showResults &&
@@ -310,6 +311,17 @@ class AdvancedComparisonScreen extends ConsumerWidget {
             (controllerState.aiCommentary.hasValue &&
                 controllerState.aiCommentary.asData!.value?.isNotEmpty == true) ||
             controllerState.aiCommentary.hasError);
+        
+    final bool showExpectationsButton = showResults &&
+        (controllerState.statisticalExpectations.asData?.value?.isEmpty ?? true) &&
+        !controllerState.statisticalExpectations.isLoading;
+
+    final bool showExpectationsCard = showResults &&
+        (controllerState.statisticalExpectations.isLoading ||
+            (controllerState.statisticalExpectations.hasValue &&
+                controllerState.statisticalExpectations.asData!.value.isNotEmpty == true) ||
+            controllerState.statisticalExpectations.hasError);
+
 
     return ListView(
       controller: scrollController,
@@ -431,6 +443,53 @@ class AdvancedComparisonScreen extends ConsumerWidget {
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
             child: Column(
               children: [
+                if (showExpectationsButton)
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        children: [
+                          Row(
+                            children: [
+                              Icon(Icons.bar_chart_outlined, color: theme.colorScheme.secondary, size: 24),
+                              const SizedBox(width: 8),
+                              Text(
+                                'İstatistiksel Beklentiler',
+                                style: theme.textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color: theme.colorScheme.secondary,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            "Maçın istatistiksel beklentilerini (gol, korner, kart vb.) görmek için butona tıklayın.",
+                            textAlign: TextAlign.center,
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant),
+                          ),
+                          const SizedBox(height: 16),
+                          ElevatedButton.icon(
+                            icon: const Icon(Icons.analytics_outlined),
+                            label: const Text("Beklentileri Göster"),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: theme.colorScheme.secondary,
+                              foregroundColor: theme.colorScheme.onSecondary,
+                            ),
+                            onPressed: () => ref
+                                .read(advancedComparisonControllerProvider.notifier)
+                                .generateStatisticalExpectations(),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                if (showExpectationsCard)
+                  StatisticalExpectationsCard(
+                    expectations: controllerState.statisticalExpectations,
+                  ),
+                if (showExpectationsCard) const SizedBox(height: 16),
                 if (showAiButton)
                   Card(
                     child: Padding(
@@ -467,7 +526,8 @@ class AdvancedComparisonScreen extends ConsumerWidget {
                           ),
                         ],
                       ),
-                    )),
+                    ),
+                  ),
                 if (showAiCard)
                   AiAnalysisCard(
                     aiCommentary: controllerState.aiCommentary,

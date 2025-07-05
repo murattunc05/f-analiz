@@ -1,26 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:math';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data_service.dart';
 import '../services/team_name_service.dart';
 import '../services/logo_service.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../utils/dialog_utils.dart';
 
-class LastMatchesTab extends StatefulWidget {
+class LastMatchesTab extends ConsumerStatefulWidget {
   final List<String> favoriteLeagues;
   final String currentSeasonApiValue;
   
   const LastMatchesTab({super.key, required this.favoriteLeagues, required this.currentSeasonApiValue});
 
   @override
-  State<LastMatchesTab> createState() => _LastMatchesTabState();
+  ConsumerState<LastMatchesTab> createState() => _LastMatchesTabState();
 }
 
-class _LastMatchesTabState extends State<LastMatchesTab> with AutomaticKeepAliveClientMixin {
+class _LastMatchesTabState extends ConsumerState<LastMatchesTab> with AutomaticKeepAliveClientMixin {
   @override bool get wantKeepAlive => true;
 
-  final DataService _dataService = DataService();
+  late final DataService _dataService;
   bool _isLoading = true;
   String? _errorMessage;
   Map<String, List<Map<String, dynamic>>> _matchesData = {};
@@ -29,10 +30,13 @@ class _LastMatchesTabState extends State<LastMatchesTab> with AutomaticKeepAlive
   @override
   void initState() {
     super.initState();
+    _dataService = ref.read(dataServiceProvider);
     if (widget.favoriteLeagues.isNotEmpty) {
       _fetchData();
     } else {
-      setState(() { _isLoading = false; });
+      if (mounted) {
+        setState(() { _isLoading = false; });
+      }
     }
   }
   

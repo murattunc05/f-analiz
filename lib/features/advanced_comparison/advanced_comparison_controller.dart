@@ -6,7 +6,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 import '../../data_service.dart';
 import '../../services/team_name_service.dart';
-import '../single_team_analysis/single_team_controller.dart';
 
 // Liglerin genel kalitesini ve rekabet seviyesini belirten basit bir harita.
 const Map<String, String> _leagueQualityMap = {
@@ -69,6 +68,7 @@ class AdvancedComparisonState {
   final Map<String, int> h2hStats;
 
   final AsyncValue<String> aiCommentary;
+  final AsyncValue<Map<String, dynamic>> statisticalExpectations;
 
   const AdvancedComparisonState({
     this.selectedLeague1,
@@ -85,6 +85,7 @@ class AdvancedComparisonState {
     this.h2hMatches = const [],
     this.h2hStats = const {},
     this.aiCommentary = const AsyncValue.data(''),
+    this.statisticalExpectations = const AsyncValue.data({}),
   });
 
   AdvancedComparisonState copyWith({
@@ -109,6 +110,7 @@ class AdvancedComparisonState {
     List<Map<String, dynamic>>? h2hMatches,
     Map<String, int>? h2hStats,
     AsyncValue<String>? aiCommentary,
+    AsyncValue<Map<String, dynamic>>? statisticalExpectations,
   }) {
     return AdvancedComparisonState(
       selectedLeague1:
@@ -129,6 +131,8 @@ class AdvancedComparisonState {
       h2hMatches: h2hMatches ?? this.h2hMatches,
       h2hStats: h2hStats ?? this.h2hStats,
       aiCommentary: aiCommentary ?? this.aiCommentary,
+      statisticalExpectations:
+          statisticalExpectations ?? this.statisticalExpectations,
     );
   }
 }
@@ -201,6 +205,7 @@ class AdvancedComparisonController
     state = state.copyWith(
         comparisonResult: const AsyncValue.data(null),
         aiCommentary: const AsyncValue.data(''),
+        statisticalExpectations: const AsyncValue.data({}),
         clearError: true);
     _clearH2HData();
   }
@@ -311,7 +316,35 @@ class AdvancedComparisonController
         team1Data: state.team1Data.copyWith(stats: AsyncValue.error(e, st)),
         team2Data: state.team2Data.copyWith(stats: AsyncValue.error(e, st)),
         aiCommentary: const AsyncValue.data(''),
+        statisticalExpectations: const AsyncValue.data({}),
       );
+    }
+  }
+
+  Future<void> generateStatisticalExpectations() async {
+    final team1StatsValue = state.team1Data.stats.value;
+    final team2StatsValue = state.team2Data.stats.value;
+
+    if (team1StatsValue == null || team2StatsValue == null) {
+      state = state.copyWith(
+          statisticalExpectations: AsyncValue.error(
+              "Önce takımları karşılaştırın.", StackTrace.current));
+      return;
+    }
+
+    state = state.copyWith(statisticalExpectations: const AsyncValue.loading());
+
+    try {
+      final comparisonData =
+          _calculateComparison(team1StatsValue, team2StatsValue);
+
+      // Simüle edilmiş bir gecikme
+      await Future.delayed(const Duration(milliseconds: 500));
+
+      state = state.copyWith(
+          statisticalExpectations: AsyncValue.data(comparisonData));
+    } catch (e, st) {
+      state = state.copyWith(statisticalExpectations: AsyncValue.error(e, st));
     }
   }
 

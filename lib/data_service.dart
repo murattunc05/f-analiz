@@ -1,15 +1,13 @@
 // lib/data_service.dart
 
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 import 'dart:io';
 import 'package:csv/csv.dart';
-// unorm_dart import'u şu an bu dosyada doğrudan kullanılmıyor ama analiz fonksiyonlarında kullanıldığı için kalabilir.
-// import 'package:unorm_dart/unorm_dart.dart' as unorm; 
 import 'services/team_name_service.dart';
-// utils.dart import'u kaldırıldı çünkü bu dosyada doğrudan kullanılmıyor. 
-// Kullanan dosyalarda (örn: single_team_screen.dart) zaten import ediliyor.
 
-// YENİ: Önbellek için model sınıfı. Bu, kodu daha okunaklı ve güvenli hale getirir.
+// Riverpod provider'ı
+final dataServiceProvider = Provider<DataService>((ref) => DataService());
 class _CacheEntry {
   final String data;
   final DateTime timestamp;
