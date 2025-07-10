@@ -1,6 +1,5 @@
 // lib/widgets/match_event_timeline.dart
 import 'package:flutter/material.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:timeline_tile/timeline_tile.dart';
 
 class MatchEventTimeline extends StatelessWidget {

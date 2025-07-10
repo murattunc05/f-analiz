@@ -9,10 +9,10 @@ class ModernStandingsRow extends StatelessWidget {
   final int rank;
 
   const ModernStandingsRow({
-    Key? key,
+    super.key,
     required this.standing,
     required this.rank,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -93,7 +93,7 @@ class ModernStandingsRow extends StatelessWidget {
 
 /// Puan durumu tablosu için başlık satırı.
 class StandingsHeader extends StatelessWidget {
-  const StandingsHeader({Key? key}) : super(key: key);
+  const StandingsHeader({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -127,10 +127,10 @@ class _HeaderCell extends StatelessWidget {
   final TextAlign alignment;
 
   const _HeaderCell({
-    Key? key,
+    super.key,
     required this.text,
     this.alignment = TextAlign.center,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

@@ -5,7 +5,7 @@ import 'dart:math' as math;
 class MatchLineupsView extends StatelessWidget {
   final List<dynamic> lineups;
 
-  const MatchLineupsView({Key? key, required this.lineups}) : super(key: key);
+  const MatchLineupsView({super.key, required this.lineups});
 
   @override
   Widget build(BuildContext context) {
@@ -367,7 +367,7 @@ class MatchLineupsView extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                 ),
               );
-            }).toList(),
+            }),
         ],
       ),
     );

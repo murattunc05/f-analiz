@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'dart:math';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data_service.dart';
 import '../services/team_name_service.dart';
@@ -24,7 +23,7 @@ class _LastMatchesTabState extends ConsumerState<LastMatchesTab> with AutomaticK
   late final DataService _dataService;
   bool _isLoading = true;
   String? _errorMessage;
-  Map<String, List<Map<String, dynamic>>> _matchesData = {};
+  final Map<String, List<Map<String, dynamic>>> _matchesData = {};
   String? _expandedLeagueName;
 
   @override

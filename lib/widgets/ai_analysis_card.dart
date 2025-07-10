@@ -172,7 +172,7 @@ class AiAnalysisCard extends StatelessWidget {
                           // Şimdilik hepsi aynı stilde gösterilecek.
                            if (entry.value.trim().isEmpty) return const SizedBox.shrink();
                            return _buildSection(context, entry.key, entry.value, sectionIcons[entry.key] ?? Icons.info_outline);
-                        }).toList(),
+                        }),
                         if (oneCikanTahmin != null && oneCikanTahmin.isNotEmpty) ...[
                           const SizedBox(height: 16),
                           _buildFeaturedPrediction(context, oneCikanTahmin),
@@ -234,7 +234,7 @@ class AiAnalysisCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 10),
-          ...contentLines.where((l) => l.trim().isNotEmpty).map((line) => _buildContentRow(context, line)).toList(),
+          ...contentLines.where((l) => l.trim().isNotEmpty).map((line) => _buildContentRow(context, line)),
         ],
       ),
     );

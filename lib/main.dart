@@ -1,11 +1,12 @@
 // lib/main.dart
+import 'package:flutter/rendering.dart'; // ScrollDirection için eklendi
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/material.dart';
+import 'package:google_nav_bar/google_nav_bar.dart'; // Gerekli paketi import ediyoruz
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
-// DEĞİŞİKLİK: Yeni analiz ekranı import edildi, diğerleri kaldırıldı
 import 'home_feed_screen.dart';
 import 'matches_screen.dart';
 import 'analysis_screen.dart'; 
@@ -177,14 +178,24 @@ class HomeScreenState extends State<HomeScreen> {
   late PageController _pageController;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   late List<ScrollController> _scrollControllers;
+  final ValueNotifier<bool> _isNavBarVisible = ValueNotifier<bool>(true);
 
   @override
   void initState() {
     super.initState();
     _pageController = PageController(initialPage: _selectedIndex);
-    // DEĞİŞİKLİK: Scroll controller sayısı 3'e düşürüldü
     _scrollControllers = List.generate(3, (_) => ScrollController());
     _updateWidgetOptions();
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    for (var controller in _scrollControllers) {
+      controller.dispose();
+    }
+    _isNavBarVisible.dispose();
+    super.dispose();
   }
 
   @override
@@ -203,7 +214,6 @@ class HomeScreenState extends State<HomeScreen> {
   }
 
   void _updateWidgetOptions() {
-    // DEĞİŞİKLİK: Widget listesi yeni 3 sekmeli yapıya göre güncellendi
     _widgetOptions = <Widget>[
       HomeFeedScreen(
         key: const ValueKey('homeFeedScreen'),
@@ -240,13 +250,6 @@ class HomeScreenState extends State<HomeScreen> {
         _pageController.jumpToPage(index);
       }
     }
-  }
-
-  @override
-  void dispose() {
-    _pageController.dispose();
-    for (var controller in _scrollControllers) { controller.dispose(); }
-    super.dispose();
   }
 
   String _getPaletteDisplayName(AppThemePalette palette) {
@@ -376,26 +379,111 @@ class HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDarkMode = theme.brightness == Brightness.dark;
     
     return Scaffold(
       key: _scaffoldKey,
       backgroundColor: theme.scaffoldBackgroundColor,
       drawer: Drawer(child: ListView(padding: EdgeInsets.zero,children: <Widget>[Container(height: 120, padding: const EdgeInsets.fromLTRB(16.0, 40.0, 16.0, 8.0), decoration: BoxDecoration(color: theme.colorScheme.primary), child: Align(alignment: Alignment.centerLeft, child: Text('Ayarlar', style: theme.textTheme.headlineSmall?.copyWith(color: theme.colorScheme.onPrimary)))), ListTile(leading: Icon( widget.currentBrightnessPreference == BrightnessPreference.light ? Icons.light_mode_outlined : widget.currentBrightnessPreference == BrightnessPreference.dark ? Icons.dark_mode_outlined : Icons.brightness_auto_outlined ), title: Text( widget.currentBrightnessPreference == BrightnessPreference.light ? 'Mod: Aydınlık' : widget.currentBrightnessPreference == BrightnessPreference.dark ? 'Mod: Koyu' : 'Mod: Sistem Varsayılanı' ), onTap: () { BrightnessPreference nextPreference; if (widget.currentBrightnessPreference == BrightnessPreference.light) { nextPreference = BrightnessPreference.dark; } else if (widget.currentBrightnessPreference == BrightnessPreference.dark) nextPreference = BrightnessPreference.system; else nextPreference = BrightnessPreference.light; widget.onBrightnessPreferenceChanged(nextPreference); }), ListTile(leading: const Icon(Icons.palette_outlined), title: const Text('Temalar'), subtitle: Text('Mevcut: ${_getPaletteDisplayName(widget.currentPalette)}'), onTap: () { Navigator.pop(context); _showThemePaletteSelectionDialog(context); }), ListTile(leading: const Icon(Icons.calendar_today_outlined), title: const Text('Sezon'), subtitle: Text('Geçerli: ${_getDisplaySeason(widget.currentSeasonApiValue)}'), onTap: () { Navigator.pop(context); _showSeasonSelectionDialog(context); }), const Divider(), ListTile(leading: const Icon(Icons.visibility_outlined), title: const Text('Görüntülenecek İstatistikler'), onTap: () { Navigator.pop(context); _showStatsDisplaySettingsDialog(context); }), ListTile(leading: const Icon(Icons.info_outline), title: const Text('Hakkında'), onTap: () { Navigator.pop(context); _showAboutDialog(context); })])),
-      body: PageView(
-        controller: _pageController,
-        physics: const NeverScrollableScrollPhysics(), 
-        children: _widgetOptions,
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed, 
-        // DEĞİŞİKLİK: Navigasyon barı 3 sekmeye düşürüldü
-        items: const <BottomNavigationBarItem>[
-          BottomNavigationBarItem(icon: Icon(Icons.dynamic_feed_outlined), activeIcon: Icon(Icons.dynamic_feed), label: 'Akış'),
-          BottomNavigationBarItem(icon: Icon(Icons.sports_soccer_outlined), activeIcon: Icon(Icons.sports_soccer), label: 'Maçlar'),
-          BottomNavigationBarItem(icon: Icon(Icons.analytics_outlined), activeIcon: Icon(Icons.analytics), label: 'Analiz'),
-        ], 
-        currentIndex: _selectedIndex, 
-        onTap: _onItemTapped
+      // DEĞİŞİKLİK: Scaffold'un body'si artık Stack
+      body: Stack(
+        children: [
+          // Ana içerik (PageView)
+          NotificationListener<UserScrollNotification>(
+            onNotification: (notification) {
+              final ScrollDirection direction = notification.direction;
+              if (direction == ScrollDirection.reverse && _isNavBarVisible.value) {
+                _isNavBarVisible.value = false;
+              } else if (direction == ScrollDirection.forward && !_isNavBarVisible.value) {
+                _isNavBarVisible.value = true;
+              }
+              return true;
+            },
+            child: PageView(
+              controller: _pageController,
+              physics: const NeverScrollableScrollPhysics(), 
+              children: _widgetOptions,
+            ),
+          ),
+          // Navigasyon Barı (Üst katman)
+          Positioned(
+            bottom: 20,
+            left: 0,
+            right: 0,
+            child: ValueListenableBuilder<bool>(
+              valueListenable: _isNavBarVisible,
+              builder: (context, isVisible, child) {
+                return AnimatedSlide(
+                  duration: const Duration(milliseconds: 300),
+                  offset: isVisible ? Offset.zero : const Offset(0, 2),
+                  curve: Curves.easeOut,
+                  child: child,
+                );
+              },
+              child: Container(
+                color: Colors.transparent,
+                child: SafeArea(
+                  bottom: false,
+                  child: Padding(
+                    padding: const EdgeInsets.only(left: 72, right: 72, top: 8, bottom: 16),
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: isDarkMode ? const Color(0xFF2D303E) : Colors.white, 
+                        borderRadius: BorderRadius.circular(50),
+                        boxShadow: [
+                          BoxShadow(
+                            blurRadius: 25,
+                            color: isDarkMode ? Colors.black.withOpacity(0.4) : Colors.black.withOpacity(0.1),
+                            offset: const Offset(0, 10),
+                          )
+                        ],
+                      ),
+                      child: GNav(
+                        rippleColor: Colors.transparent,
+                        hoverColor: Colors.transparent,
+                        haptic: true,
+                        tabBorderRadius: 25,
+                        tabBorder: Border.all(color: Colors.transparent),
+                        tabActiveBorder: Border.all(color: theme.colorScheme.primary.withOpacity(0.3), width: 1),
+                        tabShadow: const [],
+                        tabBackgroundColor: Colors.transparent,
+                        tabMargin: const EdgeInsets.symmetric(horizontal: 0),
+                        color: isDarkMode ? Colors.white.withOpacity(0.6) : Colors.grey[600]!.withOpacity(0.6),
+                        activeColor: isDarkMode ? Colors.white : theme.colorScheme.primary,
+                        tabBackgroundGradient: null,
+                        curve: Curves.easeOutQuad,
+                        duration: const Duration(milliseconds: 300),
+                        gap: 5,
+                        iconSize: 22,
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+                        selectedIndex: _selectedIndex,
+                        onTabChange: _onItemTapped,
+                        tabs: const [
+                          GButton(
+                            icon: Icons.space_dashboard_outlined,
+                            text: 'Akış',
+                            textStyle: TextStyle(fontWeight: FontWeight.w500),
+                          ),
+                          GButton(
+                            icon: Icons.sports_soccer_outlined,
+                            text: 'Maçlar',
+                            textStyle: TextStyle(fontWeight: FontWeight.w500),
+                          ),
+                          GButton(
+                            icon: Icons.insights_outlined,
+                            text: 'Analiz',
+                            textStyle: TextStyle(fontWeight: FontWeight.w500),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

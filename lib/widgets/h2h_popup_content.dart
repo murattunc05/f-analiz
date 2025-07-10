@@ -98,7 +98,6 @@ class H2HPopupContent extends StatelessWidget {
     final result = match['FTR']?.toString();
     final date = match['Date']?.toString() ?? '';
 
-    final isTeam1Home = TeamNameService.normalize(homeTeamOriginal) == TeamNameService.normalize(team1OriginalName);
     
     FontWeight homeFontWeight = FontWeight.normal;
     FontWeight awayFontWeight = FontWeight.normal;

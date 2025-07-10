@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class StatisticalExpectationsCard extends StatelessWidget {
+class StatisticalExpectationsCard extends StatefulWidget {
   final AsyncValue<Map<String, dynamic>> expectations;
 
   const StatisticalExpectationsCard({
@@ -10,7 +10,46 @@ class StatisticalExpectationsCard extends StatelessWidget {
   });
 
   @override
+  State<StatisticalExpectationsCard> createState() => _StatisticalExpectationsCardState();
+}
+
+class _StatisticalExpectationsCardState extends State<StatisticalExpectationsCard> with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _animation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 1000),
+      vsync: this,
+    );
+    _animation = CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeInOut,
+    );
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _controller.forward();
+    });
+  }
+
+  void startAnimation() {
+    _controller.reset();
+    _controller.forward();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    return _buildCardContent(context);
+  }
+
+  Widget _buildCardContent(BuildContext context) {
     final theme = Theme.of(context);
     return Card(
       elevation: 2,
@@ -36,8 +75,24 @@ class StatisticalExpectationsCard extends StatelessWidget {
             const SizedBox(height: 4),
             Divider(color: theme.colorScheme.secondary.withOpacity(0.2)),
             const SizedBox(height: 8),
-            expectations.when(
-              data: (data) => _buildExpectationsContent(context, data),
+            widget.expectations.when(
+              data: (data) => AnimatedBuilder(
+                animation: _controller,
+                builder: (context, child) {
+                  return FadeTransition(
+                    opacity: _animation,
+                    child: ScaleTransition(
+                      scale: Tween<double>(begin: 0.95, end: 1.0).animate(
+                        CurvedAnimation(
+                          parent: _controller,
+                          curve: Curves.easeOutBack,
+                        ),
+                      ),
+                      child: _buildExpectationsContent(context, data),
+                    ),
+                  );
+                },
+              ),
               loading: () => const Center(
                 child: Padding(
                   padding: EdgeInsets.all(16.0),
@@ -181,21 +236,35 @@ class StatisticalExpectationsCard extends StatelessWidget {
                 style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
               ),
             ),
-            Text(
-              value,
-              style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold, color: color),
+            AnimatedBuilder(
+              animation: _controller,
+              builder: (context, child) {
+                final animatedValue = _controller.value * progress;
+                return Text(
+                  '${(animatedValue * 100).toStringAsFixed(0)}%',
+                  style: theme.textTheme.bodyLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: color,
+                  ),
+                );
+              },
             ),
           ],
         ),
         const SizedBox(height: 6),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(8),
-          child: LinearProgressIndicator(
-            value: progress,
-            backgroundColor: color.withOpacity(0.2),
-            color: color,
-            minHeight: 6,
-          ),
+        AnimatedBuilder(
+          animation: _controller,
+          builder: (context, child) {
+            return ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: LinearProgressIndicator(
+                value: _controller.value * progress,
+                backgroundColor: color.withOpacity(0.2),
+                color: color,
+                minHeight: 6,
+              ),
+            );
+          },
         ),
       ],
     );

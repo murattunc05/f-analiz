@@ -461,7 +461,7 @@ class _AnimatedHeader extends StatelessWidget {
                 size: 12, color: textColor.withOpacity(0.8)),
             const SizedBox(width: 4),
             Text(
-              "${playerName.split(' ').last} ${time}' ${isOwnGoal ? '(K.K)' : ''}",
+              "${playerName.split(' ').last} $time' ${isOwnGoal ? '(K.K)' : ''}",
               style: TextStyle(
                   color: textColor,
                   fontSize: 11,

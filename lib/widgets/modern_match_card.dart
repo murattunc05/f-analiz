@@ -10,10 +10,10 @@ class ModernMatchCard extends StatelessWidget {
   final VoidCallback? onTap; // Tıklama fonksiyonu dışarıdan alınacak.
 
   const ModernMatchCard({
-    Key? key,
+    super.key,
     required this.match,
     this.onTap, // onTap artık isteğe bağlı.
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

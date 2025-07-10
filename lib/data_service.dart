@@ -106,7 +106,7 @@ class DataService {
         dynamicSeasons["2020/2021"] = apiVal;
       } else if (apiVal.length == 4) {
         String startYearSuffix = apiVal.substring(0, 2);
-        String endYearSuffix = apiVal.substring(2);
+        apiVal.substring(2);
         String startFullYear;
 
         int startYrInt = int.tryParse(startYearSuffix) ?? 0;

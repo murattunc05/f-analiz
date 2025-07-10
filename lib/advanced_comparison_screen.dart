@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:futbol_analiz_app/main.dart';
-import 'package:futbol_analiz_app/utils.dart';
 import 'package:futbol_analiz_app/utils/dialog_utils.dart';
 import 'package:futbol_analiz_app/widgets/ai_analysis_card.dart';
 import 'package:futbol_analiz_app/widgets/comparison_stats_card_widget.dart';
@@ -16,8 +15,6 @@ import 'package:futbol_analiz_app/widgets/team_selection_dialog_content.dart';
 import 'package:futbol_analiz_app/widgets/team_setup_card_widget.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:futbol_analiz_app/services/logo_service.dart';
-import 'package:futbol_analiz_app/services/team_name_service.dart';
-import 'package:futbol_analiz_app/widgets/stat_comparison_row.dart';
 import 'features/advanced_comparison/advanced_comparison_controller.dart';
 import 'data_service.dart';
 
@@ -282,6 +279,7 @@ class AdvancedComparisonScreen extends ConsumerWidget {
     final controllerState = ref.watch(advancedComparisonControllerProvider);
     final team1Stats = controllerState.team1Data.stats;
     final team2Stats = controllerState.team2Data.stats;
+    final scrollController = PrimaryScrollController.of(context) ?? this.scrollController;
     final canCompare = controllerState.selectedLeague1 != null &&
         controllerState.selectedTeam1 != null &&
         controllerState.selectedLeague2 != null &&
@@ -309,11 +307,11 @@ class AdvancedComparisonScreen extends ConsumerWidget {
     final bool showAiCard = showResults &&
         (controllerState.aiCommentary.isLoading ||
             (controllerState.aiCommentary.hasValue &&
-                controllerState.aiCommentary.asData!.value?.isNotEmpty == true) ||
+                controllerState.aiCommentary.asData!.value.isNotEmpty == true) ||
             controllerState.aiCommentary.hasError);
         
     final bool showExpectationsButton = showResults &&
-        (controllerState.statisticalExpectations.asData?.value?.isEmpty ?? true) &&
+        (controllerState.statisticalExpectations.asData?.value.isEmpty ?? true) &&
         !controllerState.statisticalExpectations.isLoading;
 
     final bool showExpectationsCard = showResults &&
@@ -323,10 +321,12 @@ class AdvancedComparisonScreen extends ConsumerWidget {
             controllerState.statisticalExpectations.hasError);
 
 
-    return ListView(
+    return PrimaryScrollController(
       controller: scrollController,
-      padding: const EdgeInsets.only(bottom: 24.0),
-      children: [
+      child: ListView(
+        padding: EdgeInsets.zero,
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: [
         // Kurulum Kartları
         Card(
           elevation: 2,
@@ -552,7 +552,8 @@ class AdvancedComparisonScreen extends ConsumerWidget {
           )
         else
           _buildEmptyState(context),
-      ],
+        ],
+      ),
     );
   }
 }

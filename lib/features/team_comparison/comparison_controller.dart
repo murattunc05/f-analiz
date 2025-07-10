@@ -1,10 +1,8 @@
 // lib/features/team_comparison/comparison_controller.dart
 import 'dart:async';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data_service.dart';
 import '../../services/team_name_service.dart';
-import '../single_team_analysis/single_team_controller.dart';
 
 // YENİ: copyWith metodunu daha temiz hale getirmek için ValueGetter kullanacağız.
 // Bu, bir değerin "değiştirilmedi" durumu ile "null olarak ayarlandı" durumu

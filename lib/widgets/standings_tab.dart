@@ -24,7 +24,7 @@ class _StandingsTabState extends ConsumerState<StandingsTab> with AutomaticKeepA
   late final DataService _dataService;
   bool _isLoading = true;
   String? _errorMessage;
-  Map<String, List<Map<String, dynamic>>> _standingsData = {};
+  final Map<String, List<Map<String, dynamic>>> _standingsData = {};
   String? _expandedLeagueName;
 
   @override
@@ -486,7 +486,7 @@ class _StandingsTabState extends ConsumerState<StandingsTab> with AutomaticKeepA
                               child: CachedNetworkImage(imageUrl: teamData['logo_url'], width: 24, height: 24, fit: BoxFit.contain, errorWidget: (c, u, e) => const Icon(Icons.shield_outlined, size: 24)),
                             )
                           else
-                            const Padding(padding: const EdgeInsets.only(right: 8.0), child: Icon(Icons.shield, size: 24)),
+                            const Padding(padding: EdgeInsets.only(right: 8.0), child: Icon(Icons.shield, size: 24)),
                           Expanded(child: Text(teamData['teamDisplayName'], overflow: TextOverflow.ellipsis, style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500))),
                         ],
                       ),

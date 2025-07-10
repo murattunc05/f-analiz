@@ -1,7 +1,5 @@
 // lib/widgets/h2h_summary_card.dart
 import 'package:flutter/material.dart';
-import 'package:cached_network_image/cached_network_image.dart';
-import '../services/logo_service.dart';
 import '../services/team_name_service.dart';
 
 class H2HSummaryCard extends StatelessWidget {
@@ -134,7 +132,7 @@ class H2HSummaryCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceVariant.withOpacity(0.4),
+        color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.4),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(

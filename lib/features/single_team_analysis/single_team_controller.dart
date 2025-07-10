@@ -12,7 +12,7 @@ class SingleTeamState {
   final String? selectedTeam; // Takım seçimi de eklendi
 
   const SingleTeamState({
-    this.teamStats = const AsyncValue.data(const {}),
+    this.teamStats = const AsyncValue.data({}),
     this.availableTeams = const [],
     this.isLoadingTeams = false,
     this.selectedLeague,
