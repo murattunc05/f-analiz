@@ -1,5 +1,7 @@
 // lib/services/logo_service.dart
 import 'dart:core';
+import 'package:flutter/material.dart';
+import 'team_name_service.dart';
 
 class LogoService {
   // YENİ: Temel URL güncellendi.
@@ -46,30 +48,38 @@ class LogoService {
   // YENİ: CSV'den gelen orijinal takım adını, yeni URL'deki dosya adına eşleştiren harita.
   // Dosya adları küçük harf ve boşluk yerine tire (-) içerecek şekilde güncellendi.
   static const Map<String, String> _teamFileNameMap = {
-    // Türkiye
-    'Fenerbahce': 'fenerbahce', 'Galatasaray': 'galatasaray', 'Besiktas': 'besiktas',
-    'Trabzonspor': 'trabzonspor', 'Basaksehir': 'istanbul-basaksehir', 'Istanbulspor': 'istanbulspor',
-    'Buyuksehyr': 'basaksehir', 'Ankaragucu': 'ankaragucu', 'Sivasspor': 'sivasspor',
-    'Antalyaspor': 'antalyaspor', 'Gaziantep': 'gaziantep', 'Alanyaspor': 'alanyaspor',
-    'Karagumruk': 'fatih-karagumruk', 'Kasimpasa': 'kasimpasa', 'Konyaspor': 'konyaspor',
-    'Rizespor': 'rizespor', 'Samsunspor': 'samsunspor', 'Pendikspor': 'pendikspor', 'Hatayspor': 'hatayspor',
-    'Kayserispor': 'kayserispor', 'Goztep': 'goztepe-izmir', 'Eyupspor': 'eyupspor', 'Bodrumspor': 'bodrum-fk',
-    'Ad. Demirspor': 'adana-demirspor',
+    // Türkiye - Hem orijinal hem düzeltilmiş isimler
+    'Fenerbahce': 'fenerbahce', 'Fenerbahçe': 'fenerbahce',
+    'Galatasaray': 'galatasaray',
+    'Besiktas': 'besiktas', 'Beşiktaş': 'besiktas',
+    'Trabzonspor': 'trabzonspor',
+    'Basaksehir': 'basaksehir', 'Başakşehir': 'basaksehir',
+    'Istanbulspor': 'istanbulspor', 'İstanbulspor': 'istanbulspor',
+    'Buyuksehyr': 'basaksehir', 'Ankaragucu': 'ankaragucu', 'Ankaragücü': 'ankaragucu',
+    'Sivasspor': 'sivasspor', 'Antalyaspor': 'antalyaspor', 'Gaziantep': 'gaziantep',
+    'Alanyaspor': 'alanyaspor', 'Karagumruk': 'fatih-karagumruk', 'Fatih Karagümrük': 'fatih-karagumruk',
+    'Kasimpasa': 'kasimpasa', 'Kasımpaşa': 'kasimpasa', 'Konyaspor': 'konyaspor',
+    'Rizespor': 'rizespor', 'Samsunspor': 'samsunspor', 'Pendikspor': 'pendikspor',
+    'Hatayspor': 'hatayspor', 'Kayserispor': 'kayserispor',
+    'Goztep': 'goztepe-izmir', 'Göztepe': 'goztepe-izmir', 'Eyupspor': 'eyupspor', 'Eyüpspor': 'eyupspor',
+    'Bodrumspor': 'bodrum-fk', 'Ad. Demirspor': 'adana-demirspor', 'Adana Demirspor': 'adana-demirspor',
+    'Gaziantep FK': 'gaziantep', 'Kocaelispor': 'kocaelispor', 'Genclerbirligi': 'genclerbirligi', 
 
     // İngiltere
     'Man City': 'manchester-city', 'Man United': 'manchester-united', 'Arsenal': 'arsenal',
     'Liverpool': 'liverpool', 'Chelsea': 'chelsea', 'Tottenham': 'tottenham',
     'Newcastle': 'newcastle', 'West Ham': 'west-ham', 'Wolves': 'wolves',
-    'Brighton': 'brighton', 'Aston Villa': 'aston-villa', 'Crystal Palace': 'crystal-palace',
+    'Brighton': 'brighton', 'Aston Villa': 'aston-villa', 'Crystal Palace': 'lee-palace',
     'Fulham': 'fulham', 'Bournemouth': 'bournemouth', 'Brentford': 'brentford', 'Everton': 'everton',
     'Nott\'m Forest': 'nottingham-forest', 'Leicester': 'leicester', 'Ipswich': 'ipswich', 'Southampton': 'southampton',
+    'Leeds': 'leeds-united',
 
     // İngiltere - Championship (E1.csv)
-    'Blackburn': 'blackburn-rovers', 'Bristol City': 'bristol-city', 'Burnley': 'burnley-fc', 'Cardiff': 'cardiff-city',
+    'Blackburn': 'blackburn-rovers', 'Bristol City': 'bristol-city', 'Burnley': 'burnley', 'Cardiff': 'cardiff-city',
     'Coventry': 'coventry-city', 'Huddersfield': 'huddersfield-town', 'Hull': 'hull-city', 'Luton': 'luton-town',
     'Middlesbrough': 'middlesbrough-fc', 'Millwall': 'millwall-fc', 'Norwich': 'norwich-city', 'Preston': 'preston-north-end',
     'QPR': 'queens-park-rangers', 'Reading': 'reading-fc', 'Rotherham': 'rotherham-united', 'Sheffield United': 'sheffield-united',
-    'Stoke': 'stoke-city', 'Sunderland': 'sunderland-afc', 'Swansea': 'swansea-city', 'Watford': 'watford-fc',
+    'Stoke': 'stoke-city', 'Sunderland': 'sunderland', 'Swansea': 'swansea-city', 'Watford': 'watford-fc',
     'West Brom': 'west-bromwich-albion', 'Wigan': 'wigan-athletic',
 
     // İspanya
@@ -78,6 +88,7 @@ class LogoService {
     'Betis': 'real-betis', 'Villarreal': 'villarreal', 'Valencia': 'valencia', 'Celta': 'celta', 'Girona': 'girona',
     'Osasuna': 'osasuna', 'Vallecano': 'rayo-vallecano', 'Mallorca': 'mallorca', 'Sociedad': 'real-sociedad', 'Alaves': 'deportivo',
     'Espanol': 'espanyol', 'Getafe': 'getafe', 'Leganes': 'leganes', 'Las Palmas': 'las-palmas', 'Valladolid': 'valladolid',
+    'Elche': 'elche', 'Levante': 'levante', 'Oviedo': 'oviedo',
 
     // Almanya
     'Bayern Munich': 'bayern-munchen', 'Dortmund': 'borussia-dortmund', 'Leverkusen': 'bayer-leverkusen',
@@ -111,33 +122,40 @@ class LogoService {
     'Marseille': 'marseille', 'Lyon': 'lyon', 'Lens': 'rc-lens', 'Reims': 'stade-de-reims',
     'Rennes': 'rennes', 'Toulouse': 'toulouse', 'Strasbourg': 'rc-strasbourg-alsace', 'Nantes': 'nantes',
     'Auxerre': 'auxerre', 'Angers': 'angers', 'Le Havre': 'le-havre-ac', 'St Etienne': 'as-saint-etienne',
-    'Brest': 'brest', 'Montpellier': 'montpellier',
+    'Brest': 'brest', 'Montpellier': 'montpellier', 'Metz': 'fc-metz', 'Lorient': 'lorient', 'Paris FC': 'paris-fc',
+    'PSG': 'paris-saint-germain',
+
+    // Fransa - Ligue 1 (L1.csv)
 
     // Hollanda
     'PSV': 'psv', 'Feyenoord': 'feyenoord', 'Ajax': 'ajax',
     'AZ': 'az-alkmaar', 'Utrecht': 'fc-utrecht', 'Almere City': 'almere-city-fc', 'Twente': 'twente',
     'For Sittard': 'fortuna-sittard', 'Go Ahead Eagles': 'go-ahead-eagles', 'Groningen': 'fc-groningen', 'Heerenveen': 'sc-heerenveen',
     'Heracles': 'heracles-almelo', 'NAC Breda': 'nac-breda', 'Nijmegen': 'nec-nijmegen', 'Sparta Rotterdam': 'sparta-rotterdam',
-    'Waalwijk': 'rkc-waalwijk', 'Willem II': 'willem-ii', 'Zwolle': 'pec-zwolle',
+    'Waalwijk': 'rkc-waalwijk', 'Willem II': 'willem-ii', 'Zwolle': 'pec-zwolle', 'Volendam': 'volendam', 'Telstar': 'telstar',
+
+
 
     // Portekiz (P1.csv)
     'Sp Lisbon': 'sporting-cp', 'Benfica': 'benfica', 'Porto': 'fc-porto', 'Braga': 'sc-braga',
     'Arouca': 'arouca', 'Boavista': 'boavista', 'Casa Pia': 'casa-pia-ac', 'Chaves': 'gd-chaves',
     'Estoril': 'estoril', 'Famalicao': 'famalicao', 'Gil Vicente': 'gil-vicente', 'Guimaraes': 'vitoria-de-guimaraes',
     'Moreirense': 'moreirense', 'Portimonense': 'portimonense-sc', 'Rio Ave': 'rio-ave', 'Santa Clara': 'santa-clara',
-    'Vizela': 'vizela', 'Farense': 'farense', 'AVS': 'avs-futebol-sad', 'Estrela': 'estrela-da-amadora',
+    'Vizela': 'vizela', 'Farense': 'farense', 'AVS': 'avs-futebol-sad', 'Estrela': 'estrela-da-amadora', 'Nacional': 'nacional-da-madeira',
+    'Tondela': 'tondela', 
 
     // Belçika
     'Anderlecht': 'anderlecht', 'Club Brugge': 'club-brugge', 'St. Gilloise': 'union-saint-gilloise',
     'Genk': 'genk', 'Antwerp': 'antwerp',  'Beerschot VA': 'beerschot', 'Charleroi': 'charleroi',
     'Cercle Brugge': 'cercle-brugge', 'Gent': 'gent', 'Mechelen': 'mechelen', 'Standard': 'standard-liege', 'Oud-Heverlee Leuven': 'oud-heverlee-leuven',
-    'Dender': 'fcv-dender-eh',  'St Truiden': 'sint-truiden', 'Kortrijk': 'kortrijk', 'Westerlo': 'westerlo',
+    'Dender': 'fcv-dender-eh',  'St Truiden': 'sint-truidense', 'Kortrijk': 'kortrijk', 'Westerlo': 'westerlo', 'Raal La Louviere': 'raal-la-louviere',
+  
 
     // İskoçya (SC0.csv)
     'Celtic': 'celtic', 'Rangers': 'rangers', 'Hearts': 'hearts',
     'Aberdeen': 'aberdeen', 'Dundee': 'dundee', 'Dundee United': 'dundee-united', 'Hibernian': 'hibernian',
     'Kilmarnock': 'kilmarnock', 'Livingston': 'livingstonc', 'Motherwell': 'motherwell', 'Ross County': 'ross-county',
-    'St Johnstone': 'st-johnstone', 'St Mirren': 'st-mirren',
+    'St Johnstone': 'st-johnstone', 'St Mirren': 'st-mirren', 'Waregem': 'zulte-waregem', 
 
     // Yunanistan (G1.csv)
     'PAOK': 'paok', 'AEK': 'aek-athens', 'Olympiakos': 'olympiacos', 'Panathinaikos': 'panathinaikos',
@@ -161,6 +179,34 @@ class LogoService {
     return '$_baseUrl/$encodedCountry/700x700/$encodedLeagueFileName.png';
   }
 
+  // Takım logosu widget'ını döndürür
+  static Widget? getTeamLogo(String teamName, String leagueName, {double? width, double? height}) {
+    final logoUrl = getTeamLogoUrl(teamName, leagueName);
+    if (logoUrl == null) return null;
+    
+    return Image.network(
+      logoUrl,
+      width: width ?? 40,
+      height: height ?? 40,
+      fit: BoxFit.contain,
+      errorBuilder: (context, error, stackTrace) => Icon(
+        Icons.sports_soccer,
+        size: width ?? 40,
+        color: Colors.grey,
+      ),
+      loadingBuilder: (context, child, loadingProgress) {
+        if (loadingProgress == null) return child;
+        return SizedBox(
+          width: width ?? 40,
+          height: height ?? 40,
+          child: const Center(
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+        );
+      },
+    );
+  }
+
   // YENİ: URL oluşturma mantığı yeni yapıya göre güncellendi.
   static String? getTeamLogoUrl(String originalCsvTeamName, String appLeagueName) {
     // 1. Lig adından ülke adını al.
@@ -170,19 +216,26 @@ class LogoService {
       return null;
     }
 
-    // 2. CSV'den gelen takım adından dosya adını al.
-    String? teamFileName = _teamFileNameMap[originalCsvTeamName];
+    // 2. TeamNameService ile takım adını düzelt
+    String correctedTeamName = TeamNameService.getCorrectedTeamName(originalCsvTeamName);
     
-    // 3. Eğer doğrudan eşleşme yoksa, harita üzerinde kısmi bir eşleşme ara.
+    // 3. Düzeltilmiş takım adından dosya adını al.
+    String? teamFileName = _teamFileNameMap[correctedTeamName];
+    
+    // 4. Eğer düzeltilmiş adla eşleşme yoksa, orijinal adla dene
+    teamFileName ??= _teamFileNameMap[originalCsvTeamName];
+    
+    // 5. Eğer doğrudan eşleşme yoksa, harita üzerinde kısmi bir eşleşme ara.
+    teamFileName ??= _findPartialMatch(correctedTeamName);
     teamFileName ??= _findPartialMatch(originalCsvTeamName);
 
-    // 4. Hala dosya adı bulunamadıysa, URL oluşturma.
+    // 6. Hala dosya adı bulunamadıysa, URL oluşturma.
     if (teamFileName == null) {
-      // print("LogoService: Eşleşen takım dosyası bulunamadı: $originalCsvTeamName");
+      // print("LogoService: Eşleşen takım dosyası bulunamadı: $originalCsvTeamName -> $correctedTeamName");
       return null;
     }
     
-    // 5. URL'yi oluştur. URL'de özel karakterler olmaması için encode et.
+    // 7. URL'yi oluştur. URL'de özel karakterler olmaması için encode et.
     final encodedCountry = Uri.encodeComponent(country);
     final encodedTeamFileName = Uri.encodeComponent(teamFileName);
 

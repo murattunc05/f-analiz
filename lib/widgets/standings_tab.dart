@@ -6,6 +6,7 @@ import '../services/team_name_service.dart';
 import '../services/logo_service.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../utils/dialog_utils.dart';
+import '../team_profile_screen.dart';
 import 'league_matches_tab_content.dart';
 
 class StandingsTab extends ConsumerStatefulWidget {
@@ -277,16 +278,66 @@ class _StandingsTabState extends ConsumerState<StandingsTab> with AutomaticKeepA
           Padding(padding: const EdgeInsets.symmetric(vertical: 16.0),
             child: Row(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.center, children: <Widget>[
                 Expanded(child: Column(mainAxisSize: MainAxisSize.min, children: [
-                  if (homeLogoUrl != null) CachedNetworkImage(imageUrl: homeLogoUrl, width: logoSize, height: logoSize, fit: BoxFit.contain) else Icon(Icons.shield_outlined, size: logoSize),
-                  const SizedBox(height: 8), Text(homeTeamDisplay, textAlign: TextAlign.center, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis, maxLines: 2),
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.pop(context); // Pop-up'ı kapat
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => TeamProfileScreen(
+                            originalTeamName: originalHomeTeam,
+                            leagueName: leagueName,
+                            currentSeasonApiValue: widget.currentSeasonApiValue,
+                          ),
+                        ),
+                      );
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        color: Colors.transparent,
+                      ),
+                      child: homeLogoUrl != null 
+                          ? CachedNetworkImage(imageUrl: homeLogoUrl, width: logoSize, height: logoSize, fit: BoxFit.contain) 
+                          : Icon(Icons.shield_outlined, size: logoSize),
+                    ),
+                  ),
+                  const SizedBox(height: 8), 
+                  Text(homeTeamDisplay, textAlign: TextAlign.center, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis, maxLines: 2),
                 ])),
                 Padding(padding: const EdgeInsets.symmetric(horizontal: 12.0), child: Column(children: [
                     Text('$ftHomeGoals - $ftAwayGoals', style: theme.textTheme.headlineMedium?.copyWith(color: theme.colorScheme.primary, fontWeight: FontWeight.bold)),
                     if (halfTimeScoreInfo.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 4.0), child: Text(halfTimeScoreInfo, style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant.withOpacity(0.7)))),
                   ])),
                 Expanded(child: Column(mainAxisSize: MainAxisSize.min, children: [
-                  if (awayLogoUrl != null) CachedNetworkImage(imageUrl: awayLogoUrl, width: logoSize, height: logoSize, fit: BoxFit.contain) else Icon(Icons.shield_outlined, size: logoSize),
-                  const SizedBox(height: 8), Text(awayTeamDisplay, textAlign: TextAlign.center, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis, maxLines: 2),
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.pop(context); // Pop-up'ı kapat
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => TeamProfileScreen(
+                            originalTeamName: originalAwayTeam,
+                            leagueName: leagueName,
+                            currentSeasonApiValue: widget.currentSeasonApiValue,
+                          ),
+                        ),
+                      );
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        color: Colors.transparent,
+                      ),
+                      child: awayLogoUrl != null 
+                          ? CachedNetworkImage(imageUrl: awayLogoUrl, width: logoSize, height: logoSize, fit: BoxFit.contain) 
+                          : Icon(Icons.shield_outlined, size: logoSize),
+                    ),
+                  ),
+                  const SizedBox(height: 8), 
+                  Text(awayTeamDisplay, textAlign: TextAlign.center, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis, maxLines: 2),
                 ])),
               ]),
           ),
@@ -305,21 +356,21 @@ class _StandingsTabState extends ConsumerState<StandingsTab> with AutomaticKeepA
     return InkWell(
       onTap: () => _handleExpansion(leagueName),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             SizedBox(
-              width: 34,
-              height: 34,
+              width: 28,
+              height: 28,
               child: logoUrl != null
                   ? CachedNetworkImage(
                       imageUrl: logoUrl,
                       placeholder: (context, url) => const Center(child: CircularProgressIndicator(strokeWidth: 2.0)),
-                      errorWidget: (context, url, error) => const Icon(Icons.shield_outlined, size: 34),
+                      errorWidget: (context, url, error) => const Icon(Icons.shield_outlined, size: 28),
                       fit: BoxFit.contain,
                     )
-                  : const Icon(Icons.shield_outlined, size: 34),
+                  : const Icon(Icons.shield_outlined, size: 28),
             ),
             const SizedBox(width: 10),
             Expanded(child: Text(leagueName, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600), textAlign: TextAlign.center, overflow: TextOverflow.ellipsis)),
@@ -343,7 +394,7 @@ class _StandingsTabState extends ConsumerState<StandingsTab> with AutomaticKeepA
     
     return ListView.builder(
       key: const PageStorageKey<String>('standings_list'),
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 8.0),
       itemCount: widget.favoriteLeagues.length,
       itemBuilder: (context, index) {
         final leagueName = widget.favoriteLeagues[index];
@@ -359,7 +410,7 @@ class _StandingsTabState extends ConsumerState<StandingsTab> with AutomaticKeepA
         final isExpanded = _expandedLeagueName == leagueName;
 
         return Card(
-          margin: const EdgeInsets.only(bottom: 12.0),
+          margin: const EdgeInsets.only(bottom: 8.0),
           clipBehavior: Clip.antiAlias,
           child: Column(
             mainAxisSize: MainAxisSize.min,

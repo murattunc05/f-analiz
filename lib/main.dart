@@ -1,11 +1,20 @@
 // lib/main.dart
-import 'package:flutter/rendering.dart'; // ScrollDirection için eklendi
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/material.dart';
-import 'package:google_nav_bar/google_nav_bar.dart'; // Gerekli paketi import ediyoruz
+import 'package:flutter/services.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'screens/profile_screen.dart';
+import 'screens/onboarding_screen.dart';
+import 'screens/auth_screen.dart';
+import 'screens/profile_completion_screen.dart';
+import 'services/onboarding_service.dart';
+import 'services/auth_service.dart';
+import 'services/user_profile_service.dart';
+
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'dart:async';
 
 import 'home_feed_screen.dart';
 import 'matches_screen.dart';
@@ -41,12 +50,17 @@ const String kShowAvgYellowCardsKey = 'show_avg_yellow_cards';
 const String kShowAvgRedCardsKey = 'show_avg_red_cards';
 const String kShowIySonuclarKey = 'show_iy_sonuclar';
 const String kShowIyGolOrtKey = 'show_iy_gol_ort';
+const String kShowFormPuaniKey = 'show_form_puani';
+const String kShowIyAttigiGolOrtKey = 'show_iy_attigi_gol_ort';
+const String kShowIyYedigiGolOrtKey = 'show_iy_yedigi_gol_ort';
+const String kShowIyGalibiyetYuzdesiKey = 'show_iy_galibiyet_yuzdesi';
 
 class StatsDisplaySettings {
     bool showAttigiGol; bool showYedigiGol; bool showGalibiyet; bool showBeraberlik; bool showMaglubiyet; bool showMacBasiOrtGol;
     bool showMaclardaOrtTplGol; bool showGol2UstuOlasilik; bool showSon5MacDetaylari; bool showOverallLast5Stats; bool showGolFarki;
     bool showKgVarYok; bool showComparisonKgVar; bool showCleanSheet; bool showAvgShots; bool showAvgShotsOnTarget; bool showAvgFouls;
     bool showAvgCorners; bool showAvgYellowCards; bool showAvgRedCards; bool showIySonuclar; bool showIyGolOrt;
+    bool showFormPuani; bool showIyAttigiGolOrt; bool showIyYedigiGolOrt; bool showIyGalibiyetYuzdesi;
 
     StatsDisplaySettings({
         this.showAttigiGol = true, this.showYedigiGol = true, this.showGalibiyet = true, this.showBeraberlik = true, this.showMaglubiyet = true,
@@ -54,6 +68,7 @@ class StatsDisplaySettings {
         this.showOverallLast5Stats = true, this.showGolFarki = true, this.showKgVarYok = true, this.showComparisonKgVar = true,
         this.showCleanSheet = true, this.showAvgShots = true, this.showAvgShotsOnTarget = true, this.showAvgFouls = true,
         this.showAvgCorners = true, this.showAvgYellowCards = true, this.showAvgRedCards = true, this.showIySonuclar = true, this.showIyGolOrt = true,
+        this.showFormPuani = true, this.showIyAttigiGolOrt = true, this.showIyYedigiGolOrt = true, this.showIyGalibiyetYuzdesi = true,
     });
 
     static Future<StatsDisplaySettings> load() async {
@@ -70,6 +85,8 @@ class StatsDisplaySettings {
             showAvgFouls: prefs.getBool(kShowAvgFoulsKey) ?? true, showAvgCorners: prefs.getBool(kShowAvgCornersKey) ?? true,
             showAvgYellowCards: prefs.getBool(kShowAvgYellowCardsKey) ?? true, showAvgRedCards: prefs.getBool(kShowAvgRedCardsKey) ?? true,
             showIySonuclar: prefs.getBool(kShowIySonuclarKey) ?? true, showIyGolOrt: prefs.getBool(kShowIyGolOrtKey) ?? true,
+            showFormPuani: prefs.getBool(kShowFormPuaniKey) ?? true, showIyAttigiGolOrt: prefs.getBool(kShowIyAttigiGolOrtKey) ?? true,
+            showIyYedigiGolOrt: prefs.getBool(kShowIyYedigiGolOrtKey) ?? true, showIyGalibiyetYuzdesi: prefs.getBool(kShowIyGalibiyetYuzdesiKey) ?? true,
         );
     }
 
@@ -88,6 +105,8 @@ class StatsDisplaySettings {
             case kShowAvgFoulsKey: showAvgFouls = value; break; case kShowAvgCornersKey: showAvgCorners = value; break;
             case kShowAvgYellowCardsKey: showAvgYellowCards = value; break; case kShowAvgRedCardsKey: showAvgRedCards = value; break;
             case kShowIySonuclarKey: showIySonuclar = value; break; case kShowIyGolOrtKey: showIyGolOrt = value; break;
+            case kShowFormPuaniKey: showFormPuani = value; break; case kShowIyAttigiGolOrtKey: showIyAttigiGolOrt = value; break;
+            case kShowIyYedigiGolOrtKey: showIyYedigiGolOrt = value; break; case kShowIyGalibiyetYuzdesiKey: showIyGalibiyetYuzdesi = value; break;
         }
     }
 }
@@ -98,6 +117,18 @@ String _getStringFromBrightnessPreference(BrightnessPreference preference) { swi
 
 void main() async {
     WidgetsFlutterBinding.ensureInitialized();
+    
+    // Edge-to-edge display için
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    
+    try {
+      // Firebase'i başlat
+      await Firebase.initializeApp();
+      print('Firebase initialized successfully'); // Debug
+    } catch (e) {
+      print('Firebase initialization error: $e'); // Debug
+    }
+    
     await initializeDateFormatting('tr_TR', null);
     final prefs = await SharedPreferences.getInstance();
     final String? savedBrightnessPrefString = prefs.getString(kBrightnessPreference);
@@ -106,7 +137,7 @@ void main() async {
     final AppThemePalette initialPalette = stringToAppThemePalette(savedPaletteString);
     final StatsDisplaySettings initialStatsSettings = await StatsDisplaySettings.load();
     final String? savedSeasonApiValue = prefs.getString(kSeasonPreferenceKey);
-    final String initialSeasonApiValue = savedSeasonApiValue ?? DataService.AVAILABLE_SEASONS_API.first;
+    final String initialSeasonApiValue = savedSeasonApiValue ?? "2526"; // 2025-2026 sezonunu varsayılan yap
     
     runApp(
       ProviderScope(
@@ -133,24 +164,200 @@ class _MyAppState extends State<MyApp> {
     late StatsDisplaySettings _currentStatsSettings;
     late String _currentSeasonApiValue;
     PackageInfo _packageInfo = PackageInfo(appName: 'Bilinmiyor', packageName: 'Bilinmiyor', version: 'Bilinmiyor', buildNumber: 'Bilinmiyor');
-    @override void initState() { super.initState(); _currentBrightnessPreference = widget.initialBrightnessPreference; _currentPalette = widget.initialPalette; _currentStatsSettings = widget.initialStatsSettings; _currentSeasonApiValue = widget.initialSeasonApiValue; _initPackageInfo(); }
+    bool _showOnboarding = false;
+    bool _showAuth = false;
+    bool _showProfileCompletion = false;
+    bool _isLoading = true;
+    Timer? _seasonCheckTimer;
+    
+    @override void initState() { 
+        super.initState(); 
+        _currentBrightnessPreference = widget.initialBrightnessPreference; 
+        _currentPalette = widget.initialPalette; 
+        _currentStatsSettings = widget.initialStatsSettings; 
+        _currentSeasonApiValue = widget.initialSeasonApiValue; 
+        _initPackageInfo();
+        _checkOnboardingStatus();
+        _startSeasonCheckTimer();
+    }
+    @override
+    void dispose() {
+        _seasonCheckTimer?.cancel();
+        super.dispose();
+    }
+
     Future<void> _initPackageInfo() async { final PackageInfo info = await PackageInfo.fromPlatform(); if (mounted) setState(() => _packageInfo = info); }
-    void _changeBrightnessPreference(BrightnessPreference preference) async { final prefs = await SharedPreferences.getInstance(); await prefs.setString(kBrightnessPreference, _getStringFromBrightnessPreference(preference)); if (mounted) setState(() => _currentBrightnessPreference = preference); }
-    void _changePalette(AppThemePalette palette) async { final prefs = await SharedPreferences.getInstance(); await prefs.setString(kThemePalettePreferenceKey, appThemePaletteToString(palette)); if (mounted) setState(() => _currentPalette = palette); }
+    
+    void _startSeasonCheckTimer() {
+        _seasonCheckTimer = Timer.periodic(const Duration(seconds: 2), (timer) async {
+            try {
+                final prefs = await SharedPreferences.getInstance();
+                final savedSeasonApiValue = prefs.getString(kSeasonPreferenceKey);
+                final newSeasonApiValue = savedSeasonApiValue ?? "2526";
+                
+                if (newSeasonApiValue != _currentSeasonApiValue && mounted) {
+                    setState(() {
+                        _currentSeasonApiValue = newSeasonApiValue;
+                    });
+                }
+            } catch (e) {
+                print('Sezon kontrol hatası: $e');
+            }
+        });
+    }
+    
+    Future<void> _checkOnboardingStatus() async {
+        final isOnboardingCompleted = await OnboardingService.isOnboardingCompleted();
+        final isUserSignedIn = AuthService.isSignedIn;
+        
+        if (!isOnboardingCompleted) {
+            // Onboarding henüz tamamlanmamış
+            setState(() {
+                _showOnboarding = true;
+                _isLoading = false;
+            });
+        } else if (!isUserSignedIn) {
+            // Onboarding tamamlanmış ama kullanıcı giriş yapmamış
+            setState(() {
+                _showAuth = true;
+                _isLoading = false;
+            });
+        } else {
+            // Kullanıcı giriş yapmış, profil durumunu kontrol et
+            final userProfileService = UserProfileService();
+            final hasProfile = await userProfileService.hasUserProfile();
+            final profile = await userProfileService.loadUserProfile();
+            
+            // Profil yoksa oluştur ama profil tamamlama sayfasını gösterme
+            if (!hasProfile) {
+                await userProfileService.createProfileFromCurrentUser();
+            }
+            
+            setState(() {
+                _showProfileCompletion = false; // Artık otomatik profil tamamlama yok
+                _isLoading = false;
+            });
+        }
+    }
+    
+    void _onOnboardingCompleted() {
+        if (mounted) {
+            setState(() {
+                _showOnboarding = false;
+                _showAuth = true;
+            });
+        }
+    }
+    
+    void _onAuthCompleted() {
+        if (mounted) {
+            setState(() {
+                _showAuth = false;
+                _showProfileCompletion = false; // Direkt ana sayfaya git
+            });
+        }
+    }
+    
+    void _onAuthSkipped() {
+        if (mounted) {
+            setState(() {
+                _showAuth = false;
+                _showProfileCompletion = false;
+            });
+        }
+    }
+    
+    void _onProfileCompletionCompleted() {
+        if (mounted) {
+            setState(() {
+                _showProfileCompletion = false;
+            });
+        }
+    }
+    void _changeBrightnessPreference(BrightnessPreference preference) async { 
+      final prefs = await SharedPreferences.getInstance(); 
+      await prefs.setString(kBrightnessPreference, _getStringFromBrightnessPreference(preference)); 
+      if (mounted) {
+        setState(() => _currentBrightnessPreference = preference);
+        // Sistem UI artık builder'da otomatik güncelleniyor
+      }
+    }
+    
+
+    void _changePalette(AppThemePalette palette) async { 
+      final prefs = await SharedPreferences.getInstance(); 
+      await prefs.setString(kThemePalettePreferenceKey, appThemePaletteToString(palette)); 
+      if (mounted) {
+        setState(() => _currentPalette = palette);
+        // Sistem UI artık builder'da otomatik güncelleniyor
+      }
+    }
     void _changeStatsSetting(String key, bool value) async { await _currentStatsSettings.saveSetting(key, value); if (mounted) setState(() {}); }
     void _changeSeason(String seasonApiValue) async { final prefs = await SharedPreferences.getInstance(); await prefs.setString(kSeasonPreferenceKey, seasonApiValue); if (mounted) setState(() => _currentSeasonApiValue = seasonApiValue); }
+    
+    void _updateSystemUIForTheme(ThemeMode themeMode, ThemeData lightTheme, ThemeData darkTheme, BuildContext context) {
+      // Mevcut tema moduna göre hangi tema kullanılacağını belirle
+      final brightness = MediaQuery.platformBrightnessOf(context);
+      final isLight = themeMode == ThemeMode.light || 
+                     (themeMode == ThemeMode.system && brightness == Brightness.light);
+      
+      final currentTheme = isLight ? lightTheme : darkTheme;
+      final scaffoldColor = currentTheme.scaffoldBackgroundColor;
+      
+      SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: isLight ? Brightness.dark : Brightness.light,
+        statusBarBrightness: isLight ? Brightness.light : Brightness.dark,
+        systemNavigationBarColor: scaffoldColor,
+        systemNavigationBarDividerColor: Colors.transparent,
+        systemNavigationBarIconBrightness: isLight ? Brightness.dark : Brightness.light,
+      ));
+    }
     
     @override Widget build(BuildContext context) {
         final ThemeData currentLightTheme = AppThemes.getThemeData(_currentPalette, Brightness.light);
         final ThemeData currentDarkTheme = AppThemes.getThemeData(_currentPalette, Brightness.dark);
         ThemeMode currentThemeMode;
         switch (_currentBrightnessPreference) { case BrightnessPreference.light: currentThemeMode = ThemeMode.light; break; case BrightnessPreference.dark: currentThemeMode = ThemeMode.dark; break; case BrightnessPreference.system: currentThemeMode = ThemeMode.system; break; }
+        
         return MaterialApp(
             title: 'GOALITYCS',
             theme: currentLightTheme,
             darkTheme: currentDarkTheme,
             themeMode: currentThemeMode,
-            home: HomeScreen(onBrightnessPreferenceChanged: _changeBrightnessPreference, onPaletteChanged: _changePalette, currentBrightnessPreference: _currentBrightnessPreference, currentPalette: _currentPalette, currentStatsSettings: _currentStatsSettings, onStatsSettingChanged: _changeStatsSetting, currentSeasonApiValue: _currentSeasonApiValue, onSeasonChanged: _changeSeason, packageInfo: _packageInfo),
+            builder: (context, child) {
+              // Tema değişikliklerinde sistem UI ayarlarını güncelle
+              _updateSystemUIForTheme(currentThemeMode, currentLightTheme, currentDarkTheme, context);
+              return child!;
+            },
+            home: _isLoading 
+                ? const Scaffold(
+                    body: Center(
+                        child: CircularProgressIndicator(),
+                    ),
+                )
+                : _showOnboarding 
+                    ? OnboardingScreen(onCompleted: _onOnboardingCompleted)
+                    : _showAuth
+                        ? AuthScreen(
+                            onAuthSuccess: _onAuthCompleted,
+                            onSkip: _onAuthSkipped,
+                          )
+                        : _showProfileCompletion
+                            ? ProfileCompletionScreen(
+                                onCompleted: _onProfileCompletionCompleted,
+                              )
+                            : HomeScreen(
+                                onBrightnessPreferenceChanged: _changeBrightnessPreference, 
+                                onPaletteChanged: _changePalette, 
+                                currentBrightnessPreference: _currentBrightnessPreference, 
+                                currentPalette: _currentPalette, 
+                                currentStatsSettings: _currentStatsSettings, 
+                                onStatsSettingChanged: _changeStatsSetting, 
+                                currentSeasonApiValue: _currentSeasonApiValue, 
+                                onSeasonChanged: _changeSeason, 
+                                packageInfo: _packageInfo
+                            ),
             debugShowCheckedModeBanner: false
         );
     }
@@ -179,17 +386,96 @@ class HomeScreenState extends State<HomeScreen> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   late List<ScrollController> _scrollControllers;
   final ValueNotifier<bool> _isNavBarVisible = ValueNotifier<bool>(true);
+  Timer? _homeSeasonCheckTimer;
 
   @override
   void initState() {
     super.initState();
     _pageController = PageController(initialPage: _selectedIndex);
-    _scrollControllers = List.generate(3, (_) => ScrollController());
+    _scrollControllers = List.generate(4, (_) => ScrollController());
     _updateWidgetOptions();
+    _addSampleActivities();
+    _startHomeSeasonCheckTimer();
+  }
+
+  void _changeBrightnessFromString(String brightnessString) {
+    BrightnessPreference preference;
+    switch (brightnessString) {
+      case 'light':
+        preference = BrightnessPreference.light;
+        break;
+      case 'dark':
+        preference = BrightnessPreference.dark;
+        break;
+      case 'system':
+      default:
+        preference = BrightnessPreference.system;
+        break;
+    }
+    widget.onBrightnessPreferenceChanged(preference);
+  }
+
+  String _getCurrentBrightnessString() {
+    return _getStringFromBrightnessPreference(widget.currentBrightnessPreference);
+  }
+
+  // Örnek aktiviteler ekle (sadece ilk çalıştırmada)
+  Future<void> _addSampleActivities() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final hasAddedSamples = prefs.getBool('has_added_sample_activities') ?? false;
+      
+      if (!hasAddedSamples) {
+        // Doğrudan import kullan
+        await Future.delayed(const Duration(seconds: 1)); // UI yüklendikten sonra
+        
+        // Örnek aktiviteler ekle
+        await _addSampleActivity('Manchester United (İngiltere - Premier Lig) takımı analiz edildi');
+        await _addSampleActivity('Arsenal vs Chelsea (İngiltere - Premier Lig) karşılaştırıldı');
+        await _addSampleActivity('Liverpool (İngiltere - Premier Lig) favorilere eklendi');
+        await _addSampleActivity('Barcelona (İspanya - La Liga) takımı analiz edildi');
+        await _addSampleActivity('İngiltere - Premier Lig favori lig olarak seçildi');
+        
+        // Flag'i ayarla ki bir daha eklemesin
+        await prefs.setBool('has_added_sample_activities', true);
+      }
+    } catch (e) {
+      print('Örnek aktiviteler eklenirken hata: $e');
+    }
+  }
+
+  Future<void> _addSampleActivity(String activity) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final activities = prefs.getStringList('last_activity') ?? [];
+      
+      activities.insert(0, '${DateTime.now().toIso8601String()}|$activity');
+      
+      // Son 10 aktiviteyi sakla
+      if (activities.length > 10) {
+        activities.removeRange(10, activities.length);
+      }
+      
+      await prefs.setStringList('last_activity', activities);
+      
+      // İstatistikleri güncelle
+      if (activity.contains('analiz edildi')) {
+        final current = prefs.getInt('total_analysis') ?? 0;
+        await prefs.setInt('total_analysis', current + 1);
+      } else if (activity.contains('karşılaştırıldı')) {
+        final current = prefs.getInt('total_comparisons') ?? 0;
+        await prefs.setInt('total_comparisons', current + 1);
+      }
+      
+      await Future.delayed(const Duration(milliseconds: 100));
+    } catch (e) {
+      print('Aktivite eklenirken hata: $e');
+    }
   }
 
   @override
   void dispose() {
+    _homeSeasonCheckTimer?.cancel();
     _pageController.dispose();
     for (var controller in _scrollControllers) {
       controller.dispose();
@@ -213,28 +499,63 @@ class HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  void _startHomeSeasonCheckTimer() {
+    _homeSeasonCheckTimer = Timer.periodic(const Duration(seconds: 1), (timer) async {
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        final savedSeasonApiValue = prefs.getString(kSeasonPreferenceKey);
+        final newSeasonApiValue = savedSeasonApiValue ?? "2526";
+        
+        if (newSeasonApiValue != widget.currentSeasonApiValue && mounted) {
+          // Ana widget'a sezon değişikliğini bildir
+          widget.onSeasonChanged(newSeasonApiValue);
+        }
+      } catch (e) {
+        print('HomeScreen sezon kontrol hatası: $e');
+      }
+    });
+  }
+
   void _updateWidgetOptions() {
     _widgetOptions = <Widget>[
       HomeFeedScreen(
-        key: const ValueKey('homeFeedScreen'),
+        key: ValueKey('homeFeedScreen_${widget.currentSeasonApiValue}'),
         currentSeasonApiValue: widget.currentSeasonApiValue,
         scrollController: _scrollControllers[0],
         scaffoldKey: _scaffoldKey,
         onSearchTap: _openSearchScreen,
+        onThemeSettingsTap: () => _showThemePaletteSelectionDialog(context),
+        onStatsSettingsTap: () => _showModernStatsDialog(context),
+        onAboutTap: () => _showAboutDialog(context),
+        onBrightnessChanged: _changeBrightnessFromString,
+        currentBrightness: _getCurrentBrightnessString(),
       ),
       MatchesScreen(
-        key: const ValueKey('matchesScreen'),
+        key: ValueKey('matchesScreen_${widget.currentSeasonApiValue}'),
         scrollController: _scrollControllers[1],
         scaffoldKey: _scaffoldKey,
         onSearchTap: _openSearchScreen,
+        onThemeSettingsTap: () => _showThemePaletteSelectionDialog(context),
+        onStatsSettingsTap: () => _showModernStatsDialog(context),
+        onAboutTap: () => _showAboutDialog(context),
+        onBrightnessChanged: _changeBrightnessFromString,
+        currentBrightness: _getCurrentBrightnessString(),
       ),
       AnalysisScreen(
-        key: const ValueKey('analysisScreen'),
+        key: ValueKey('analysisScreen_${widget.currentSeasonApiValue}'),
         statsSettings: widget.currentStatsSettings,
         currentSeasonApiValue: widget.currentSeasonApiValue,
         scrollController: _scrollControllers[2],
         scaffoldKey: _scaffoldKey, 
         onSearchTap: _openSearchScreen,
+        onThemeSettingsTap: () => _showThemePaletteSelectionDialog(context),
+        onStatsSettingsTap: () => _showModernStatsDialog(context),
+        onAboutTap: () => _showAboutDialog(context),
+        onBrightnessChanged: _changeBrightnessFromString,
+        currentBrightness: _getCurrentBrightnessString(),
+      ),
+      ProfileScreen(
+        key: ValueKey('profileScreen_${widget.currentSeasonApiValue}'),
       ),
     ];
   }
@@ -254,6 +575,7 @@ class HomeScreenState extends State<HomeScreen> {
 
   String _getPaletteDisplayName(AppThemePalette palette) {
     switch (palette) {
+        case AppThemePalette.modernPremium: return "Modern Premium ⭐";
         case AppThemePalette.defaultOrange: return "Varsayılan (Turuncu)";
         case AppThemePalette.material3Dynamic: return "Material You (Dinamik)";
         case AppThemePalette.oceanBlue: return "Okyanus Mavisi";
@@ -297,59 +619,509 @@ class HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  void _showModernStatsDialog(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (BuildContext context, StateSetter setModalState) {
+            return Container(
+              height: MediaQuery.of(context).size.height * 0.85,
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(20),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 20,
+                    offset: const Offset(0, -5),
+                  ),
+                ],
+              ),
+              child: Column(
+                children: [
+                  // Handle bar
+                  Container(
+                    margin: const EdgeInsets.only(top: 12),
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: isDark ? Colors.grey[600] : Colors.grey[300],
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  
+                  // Header
+                  Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFF4CAF50), Color(0xFF45A049)],
+                            ),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(
+                            Icons.analytics_outlined,
+                            color: Colors.white,
+                            size: 20,
+                          ),
+                        ),
+                        
+                        const SizedBox(width: 12),
+                        
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'İstatistikler ve Sezon Ayarları',
+                                style: TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                  color: isDark ? Colors.white : Colors.black87,
+                                ),
+                              ),
+                              Text(
+                                'Analiz ekranlarında gösterilecek istatistikleri ve aktif sezonu yönetin',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: isDark ? Colors.grey[400] : Colors.grey[600],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  
+                  // Content
+                  Expanded(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Sezon Seçimi Bölümü
+                          _buildSeasonSelectionSection(context, isDark, setModalState),
+                          
+                          const SizedBox(height: 20),
+                          
+                          _buildModernStatsSection(
+                            context,
+                            'Ana İstatistikler',
+                            Icons.sports_soccer,
+                            const Color(0xFF2196F3),
+                            [
+                              _buildModernStatItem('Tüm Son Maç İstatistikleri', 'Bu başlık ve altındaki tüm istatistikler', widget.currentStatsSettings.showOverallLast5Stats, (value) {
+                                widget.onStatsSettingChanged(kShowOverallLast5StatsKey, value);
+                                setModalState(() {});
+                              }),
+                            ],
+                          ),
+                          
+                          if (widget.currentStatsSettings.showOverallLast5Stats) ...[
+                            _buildModernStatsSection(
+                              context,
+                              'Temel Maç İstatistikleri',
+                              Icons.bar_chart,
+                              const Color(0xFF4CAF50),
+                              [
+                                _buildModernStatItem('Attığı Gol', '', widget.currentStatsSettings.showAttigiGol, (value) {
+                                  widget.onStatsSettingChanged(kShowAttigiGolKey, value);
+                                  setModalState(() {});
+                                }),
+                                _buildModernStatItem('Yediği Gol', '', widget.currentStatsSettings.showYedigiGol, (value) {
+                                  widget.onStatsSettingChanged(kShowYedigiGolKey, value);
+                                  setModalState(() {});
+                                }),
+                                _buildModernStatItem('Gol Farkı (+/-)', '', widget.currentStatsSettings.showGolFarki, (value) {
+                                  widget.onStatsSettingChanged(kShowGolFarkiKey, value);
+                                  setModalState(() {});
+                                }),
+                                _buildModernStatItem('Galibiyet', '', widget.currentStatsSettings.showGalibiyet, (value) {
+                                  widget.onStatsSettingChanged(kShowGalibiyetKey, value);
+                                  setModalState(() {});
+                                }),
+                                _buildModernStatItem('Beraberlik', '', widget.currentStatsSettings.showBeraberlik, (value) {
+                                  widget.onStatsSettingChanged(kShowBeraberlikKey, value);
+                                  setModalState(() {});
+                                }),
+                                _buildModernStatItem('Mağlubiyet', '', widget.currentStatsSettings.showMaglubiyet, (value) {
+                                  widget.onStatsSettingChanged(kShowMaglubiyetKey, value);
+                                  setModalState(() {});
+                                }),
+                              ],
+                            ),
+                            
+                            _buildModernStatsSection(
+                              context,
+                              'Detaylı İstatistikler',
+                              Icons.analytics,
+                              const Color(0xFF9C27B0),
+                              [
+                                _buildModernStatItem('Maç Başına Ort. Gol', '', widget.currentStatsSettings.showMacBasiOrtGol, (value) {
+                                  widget.onStatsSettingChanged(kShowMacBasiOrtGolKey, value);
+                                  setModalState(() {});
+                                }),
+                                _buildModernStatItem('Maçlarda Ort. Toplam Gol', '', widget.currentStatsSettings.showMaclardaOrtTplGol, (value) {
+                                  widget.onStatsSettingChanged(kShowMaclardaOrtTplGolKey, value);
+                                  setModalState(() {});
+                                }),
+                                _buildModernStatItem('KG Var/Yok Yüzdesi', '', widget.currentStatsSettings.showKgVarYok, (value) {
+                                  widget.onStatsSettingChanged(kShowKgVarYokKey, value);
+                                  setModalState(() {});
+                                }),
+                                _buildModernStatItem('Clean Sheet (Gol Yememe)', '', widget.currentStatsSettings.showCleanSheet, (value) {
+                                  widget.onStatsSettingChanged(kShowCleanSheetKey, value);
+                                  setModalState(() {});
+                                }),
+                                _buildModernStatItem('2+ Gol Olasılığı', '', widget.currentStatsSettings.showGol2UstuOlasilik, (value) {
+                                  widget.onStatsSettingChanged(kShowGol2UstuOlasilikKey, value);
+                                  setModalState(() {});
+                                }),
+                              ],
+                            ),
+                            
+                            // Yeni Detaylı Maç Ortalamaları Bölümü
+                            _buildModernStatsSection(
+                              context,
+                              'Detaylı Maç Ortalamaları',
+                              Icons.bar_chart,
+                              const Color(0xFFFF5722),
+                              [
+                                _buildModernStatItem('Ortalama Şut', '', widget.currentStatsSettings.showAvgShots, (value) {
+                                  widget.onStatsSettingChanged(kShowAvgShotsKey, value);
+                                  setModalState(() {});
+                                }),
+                                _buildModernStatItem('Ortalama İsabetli Şut', '', widget.currentStatsSettings.showAvgShotsOnTarget, (value) {
+                                  widget.onStatsSettingChanged(kShowAvgShotsOnTargetKey, value);
+                                  setModalState(() {});
+                                }),
+                                _buildModernStatItem('Ortalama Faul', '', widget.currentStatsSettings.showAvgFouls, (value) {
+                                  widget.onStatsSettingChanged(kShowAvgFoulsKey, value);
+                                  setModalState(() {});
+                                }),
+                                _buildModernStatItem('Ortalama Korner', '', widget.currentStatsSettings.showAvgCorners, (value) {
+                                  widget.onStatsSettingChanged(kShowAvgCornersKey, value);
+                                  setModalState(() {});
+                                }),
+                                _buildModernStatItem('Ortalama Sarı Kart', '', widget.currentStatsSettings.showAvgYellowCards, (value) {
+                                  widget.onStatsSettingChanged(kShowAvgYellowCardsKey, value);
+                                  setModalState(() {});
+                                }),
+                                _buildModernStatItem('Ortalama Kırmızı Kart', '', widget.currentStatsSettings.showAvgRedCards, (value) {
+                                  widget.onStatsSettingChanged(kShowAvgRedCardsKey, value);
+                                  setModalState(() {});
+                                }),
+                              ],
+                            ),
+                            
+                            // Form ve İlk Yarı İstatistikleri Bölümü
+                            _buildModernStatsSection(
+                              context,
+                              'Form ve İlk Yarı İstatistikleri',
+                              Icons.trending_up,
+                              const Color(0xFF607D8B),
+                              [
+                                _buildModernStatItem('Form Puanı', '', widget.currentStatsSettings.showFormPuani, (value) {
+                                  widget.onStatsSettingChanged(kShowFormPuaniKey, value);
+                                  setModalState(() {});
+                                }),
+                                _buildModernStatItem('İY Attığı Gol Ortalaması', '', widget.currentStatsSettings.showIyAttigiGolOrt, (value) {
+                                  widget.onStatsSettingChanged(kShowIyAttigiGolOrtKey, value);
+                                  setModalState(() {});
+                                }),
+                                _buildModernStatItem('İY Yediği Gol Ortalaması', '', widget.currentStatsSettings.showIyYedigiGolOrt, (value) {
+                                  widget.onStatsSettingChanged(kShowIyYedigiGolOrtKey, value);
+                                  setModalState(() {});
+                                }),
+                                _buildModernStatItem('İY Galibiyet Yüzdesi', '', widget.currentStatsSettings.showIyGalibiyetYuzdesi, (value) {
+                                  widget.onStatsSettingChanged(kShowIyGalibiyetYuzdesiKey, value);
+                                  setModalState(() {});
+                                }),
+                              ],
+                            ),
+                          ],
+                          
+                          const SizedBox(height: 20),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildSeasonSelectionSection(BuildContext context, bool isDark, StateSetter setModalState) {
+    final currentSeasonDisplay = DataService.getDisplaySeasonFromApiValue(widget.currentSeasonApiValue);
+    
+    return Container(
+      margin: const EdgeInsets.only(bottom: 20),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF2A2A2A) : const Color(0xFFF8F9FA),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: const Color(0xFFFF9800).withOpacity(0.1),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFF9800).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(
+                    Icons.calendar_today,
+                    color: Color(0xFFFF9800),
+                    size: 18,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  'Geçerli Sezon',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: isDark ? Colors.white : Colors.black87,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            child: InkWell(
+              onTap: () => _showSeasonSelectionDialog(context),
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF3A3A3A) : Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: isDark ? Colors.grey[700]! : Colors.grey[300]!,
+                    width: 1,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Seçili Sezon',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: isDark ? Colors.grey[400] : Colors.grey[600],
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            currentSeasonDisplay,
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: const Color(0xFFFF9800),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Icon(
+                      Icons.chevron_right,
+                      color: isDark ? Colors.grey[400] : Colors.grey[600],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildModernStatsSection(BuildContext context, String title, IconData icon, Color color, List<Widget> items) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
+    return Container(
+      margin: const EdgeInsets.only(bottom: 20),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF2A2A2A) : const Color(0xFFF8F9FA),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: color.withOpacity(0.1),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    icon,
+                    color: color,
+                    size: 18,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: isDark ? Colors.white : Colors.black87,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          ...items,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildModernStatItem(String title, String subtitle, bool value, Function(bool) onChanged) {
+    return Builder(
+      builder: (context) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        
+        return GestureDetector(
+          onTap: () => onChanged(!value),
+          child: Container(
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: value 
+                  ? const Color(0xFF4CAF50).withOpacity(0.1)
+                  : (isDark ? const Color(0xFF333333) : Colors.white),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: value 
+                    ? const Color(0xFF4CAF50).withOpacity(0.3)
+                    : (isDark ? Colors.grey[700]! : Colors.grey[200]!),
+                width: 1,
+              ),
+            ),
+            child: Row(
+              children: [
+                // Custom switch indicator
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  width: 48,
+                  height: 28,
+                  decoration: BoxDecoration(
+                    color: value 
+                        ? const Color(0xFF4CAF50)
+                        : (isDark ? Colors.grey[600] : Colors.grey[300]),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: AnimatedAlign(
+                    duration: const Duration(milliseconds: 200),
+                    alignment: value ? Alignment.centerRight : Alignment.centerLeft,
+                    child: Container(
+                      width: 24,
+                      height: 24,
+                      margin: const EdgeInsets.all(2),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.2),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                
+                const SizedBox(width: 16),
+                
+                // Text content
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: value 
+                              ? const Color(0xFF4CAF50)
+                              : (isDark ? Colors.white : Colors.black87),
+                        ),
+                      ),
+                      if (subtitle.isNotEmpty) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          subtitle,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: isDark ? Colors.grey[400] : Colors.grey[600],
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                
+                // Status indicator
+                if (value)
+                  Icon(
+                    Icons.check_circle,
+                    color: const Color(0xFF4CAF50),
+                    size: 20,
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   void _showStatsDisplaySettingsDialog(BuildContext context) {
-    final theme = Theme.of(context);
-    showAnimatedDialog(
-      context: context, titleWidget: const Text('Görüntülenecek İstatistikler', textAlign: TextAlign.center),
-      contentWidget: StatefulBuilder(
-        builder: (BuildContext dialogContext, StateSetter setDialogState) {
-          final settings = widget.currentStatsSettings;
-          return ListView( shrinkWrap: true, children: <Widget>[
-            SwitchListTile(title: const Text('Tüm Son Maç İstatistikleri'), subtitle: const Text('Bu başlık ve altındaki tüm istatistikler'), value: settings.showOverallLast5Stats, onChanged: (bool value) { widget.onStatsSettingChanged(kShowOverallLast5StatsKey, value); setDialogState(() {}); }),
-            const Divider(),
-            Padding( padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0), child: Text("Temel Maç İstatistikleri", style: theme.textTheme.titleSmall?.copyWith(color: theme.colorScheme.secondary))),
-            IgnorePointer( ignoring: !settings.showOverallLast5Stats, child: Opacity( opacity: settings.showOverallLast5Stats ? 1.0 : 0.5,
-                child: Column(mainAxisSize: MainAxisSize.min, children: [
-                  SwitchListTile(title: const Text('Attığı Gol'), value: settings.showAttigiGol, onChanged: (bool value) { widget.onStatsSettingChanged(kShowAttigiGolKey, value); setDialogState(() {}); }),
-                  SwitchListTile(title: const Text('Yediği Gol'), value: settings.showYedigiGol, onChanged: (bool value) { widget.onStatsSettingChanged(kShowYedigiGolKey, value); setDialogState(() {}); }),
-                  SwitchListTile(title: const Text('Gol Farkı (+/-)'), value: settings.showGolFarki, onChanged: (bool value) { widget.onStatsSettingChanged(kShowGolFarkiKey, value); setDialogState(() {}); }),
-                  SwitchListTile(title: const Text('Galibiyet'), value: settings.showGalibiyet, onChanged: (bool value) { widget.onStatsSettingChanged(kShowGalibiyetKey, value); setDialogState(() {}); }),
-                  SwitchListTile(title: const Text('Beraberlik'), value: settings.showBeraberlik, onChanged: (bool value) { widget.onStatsSettingChanged(kShowBeraberlikKey, value); setDialogState(() {}); }),
-                  SwitchListTile(title: const Text('Mağlubiyet'), value: settings.showMaglubiyet, onChanged: (bool value) { widget.onStatsSettingChanged(kShowMaglubiyetKey, value); setDialogState(() {}); }),
-                  SwitchListTile(title: const Text('Maç Başına Ort. Gol'), value: settings.showMacBasiOrtGol, onChanged: (bool value) { widget.onStatsSettingChanged(kShowMacBasiOrtGolKey, value); setDialogState(() {}); }),
-                  SwitchListTile(title: const Text('Maçlarda Ort. Toplam Gol'), value: settings.showMaclardaOrtTplGol, onChanged: (bool value) { widget.onStatsSettingChanged(kShowMaclardaOrtTplGolKey, value); setDialogState(() {}); }),
-                  SwitchListTile(title: const Text('KG Var/Yok Yüzdesi'), value: settings.showKgVarYok, onChanged: (bool value) { widget.onStatsSettingChanged(kShowKgVarYokKey, value); setDialogState(() {}); }),
-                  SwitchListTile(title: const Text('Clean Sheet (Gol Yememe)'), value: settings.showCleanSheet, onChanged: (bool value) { widget.onStatsSettingChanged(kShowCleanSheetKey, value); setDialogState(() {}); }),
-                  SwitchListTile(title: const Text('2+ Gol Olasılığı'), value: settings.showGol2UstuOlasilik, onChanged: (bool value) { widget.onStatsSettingChanged(kShowGol2UstuOlasilikKey, value); setDialogState(() {}); }),
-                  SwitchListTile(title: const Text('Karşılaştırma KG VAR İhtimali'), value: settings.showComparisonKgVar, onChanged: (bool value) { widget.onStatsSettingChanged(kShowComparisonKgVarKey, value); setDialogState(() {}); }),
-                ])
-              )),
-            const Divider(),
-            Padding( padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0), child: Text("İlk Yarı İstatistikleri", style: theme.textTheme.titleSmall?.copyWith(color: theme.colorScheme.secondary))),
-            IgnorePointer( ignoring: !settings.showOverallLast5Stats, child: Opacity( opacity: settings.showOverallLast5Stats ? 1.0 : 0.5,
-                child: Column( mainAxisSize: MainAxisSize.min,children: [
-                    SwitchListTile(title: const Text('İY Sonuçları (G/B/M)'), value: settings.showIySonuclar, onChanged: (bool value) { widget.onStatsSettingChanged(kShowIySonuclarKey, value); setDialogState(() {}); }),
-                    SwitchListTile(title: const Text('İY Gol Ortalamaları'), value: settings.showIyGolOrt, onChanged: (bool value) { widget.onStatsSettingChanged(kShowIyGolOrtKey, value); setDialogState(() {}); }),
-                  ]))),
-            const Divider(),
-            Padding( padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0), child: Text("Detaylı Maç Ortalamaları", style: theme.textTheme.titleSmall?.copyWith(color: theme.colorScheme.secondary))),
-             IgnorePointer( ignoring: !settings.showOverallLast5Stats, child: Opacity( opacity: settings.showOverallLast5Stats ? 1.0 : 0.5,
-                child: Column(mainAxisSize: MainAxisSize.min, children: [
-                    SwitchListTile(title: const Text('Ortalama Şut'), value: settings.showAvgShots, onChanged: (bool value) { widget.onStatsSettingChanged(kShowAvgShotsKey, value); setDialogState(() {}); }),
-                    SwitchListTile(title: const Text('Ort. İsabetli Şut'), value: settings.showAvgShotsOnTarget, onChanged: (bool value) { widget.onStatsSettingChanged(kShowAvgShotsOnTargetKey, value); setDialogState(() {}); }),
-                    SwitchListTile(title: const Text('Ortalama Faul'), value: settings.showAvgFouls, onChanged: (bool value) { widget.onStatsSettingChanged(kShowAvgFoulsKey, value); setDialogState(() {}); }),
-                    SwitchListTile(title: const Text('Ortalama Korner'), value: settings.showAvgCorners, onChanged: (bool value) { widget.onStatsSettingChanged(kShowAvgCornersKey, value); setDialogState(() {}); }),
-                    SwitchListTile(title: const Text('Ortalama Sarı Kart'), value: settings.showAvgYellowCards, onChanged: (bool value) { widget.onStatsSettingChanged(kShowAvgYellowCardsKey, value); setDialogState(() {}); }),
-                    SwitchListTile(title: const Text('Ortalama Kırmızı Kart'), value: settings.showAvgRedCards, onChanged: (bool value) { widget.onStatsSettingChanged(kShowAvgRedCardsKey, value); setDialogState(() {}); }),
-                  ]))),
-            const Divider(),
-            IgnorePointer(ignoring: !settings.showOverallLast5Stats,
-              child: Opacity( opacity: settings.showOverallLast5Stats ? 1.0 : 0.5,
-                child: SwitchListTile( title: const Text('Son Maç Detayları'), value: settings.showSon5MacDetaylari,
-                    onChanged: (bool value) { widget.onStatsSettingChanged(kShowSon5MacDetaylariKey, value); setDialogState(() {}); })))
-          ]);
-        }),
-      actionsWidget: [ TextButton(child: const Text('Kapat'), onPressed: () => Navigator.of(context).pop()) ], maxHeightFactor: 0.8);
+    _showModernStatsDialog(context);
   }
 
   void _showAboutDialog(BuildContext context) {
@@ -376,6 +1148,113 @@ class HomeScreenState extends State<HomeScreen> {
     ));
   }
 
+  void _openProfileScreen() {
+    Navigator.of(context).push(MaterialPageRoute(
+      builder: (context) => const ProfileScreen(),
+    ));
+  }
+
+  Widget _buildDrawer(BuildContext context, ThemeData theme) {
+    return Drawer(
+      child: ListView(
+        padding: EdgeInsets.zero,
+        children: <Widget>[
+          // Drawer Header
+          Container(
+            height: 120,
+            padding: const EdgeInsets.fromLTRB(16.0, 40.0, 16.0, 8.0),
+            decoration: BoxDecoration(color: theme.colorScheme.primary),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                'GOALITYCS',
+                style: theme.textTheme.headlineSmall?.copyWith(
+                  color: theme.colorScheme.onPrimary,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
+          
+          const Divider(),
+          
+          // Theme Mode
+          ListTile(
+            leading: Icon(
+              widget.currentBrightnessPreference == BrightnessPreference.light
+                  ? Icons.light_mode_outlined
+                  : widget.currentBrightnessPreference == BrightnessPreference.dark
+                      ? Icons.dark_mode_outlined
+                      : Icons.brightness_auto_outlined,
+            ),
+            title: Text(
+              widget.currentBrightnessPreference == BrightnessPreference.light
+                  ? 'Mod: Aydınlık'
+                  : widget.currentBrightnessPreference == BrightnessPreference.dark
+                      ? 'Mod: Koyu'
+                      : 'Mod: Sistem Varsayılanı',
+            ),
+            onTap: () {
+              BrightnessPreference nextPreference;
+              if (widget.currentBrightnessPreference == BrightnessPreference.light) {
+                nextPreference = BrightnessPreference.dark;
+              } else if (widget.currentBrightnessPreference == BrightnessPreference.dark) {
+                nextPreference = BrightnessPreference.system;
+              } else {
+                nextPreference = BrightnessPreference.light;
+              }
+              widget.onBrightnessPreferenceChanged(nextPreference);
+            },
+          ),
+          
+          // Themes
+          ListTile(
+            leading: const Icon(Icons.palette_outlined),
+            title: const Text('Temalar'),
+            subtitle: Text('Mevcut: ${_getPaletteDisplayName(widget.currentPalette)}'),
+            onTap: () {
+              Navigator.pop(context);
+              _showThemePaletteSelectionDialog(context);
+            },
+          ),
+          
+          // Season
+          ListTile(
+            leading: const Icon(Icons.calendar_today_outlined),
+            title: const Text('Sezon'),
+            subtitle: Text('Geçerli: ${_getDisplaySeason(widget.currentSeasonApiValue)}'),
+            onTap: () {
+              Navigator.pop(context);
+              _showSeasonSelectionDialog(context);
+            },
+          ),
+          
+          const Divider(),
+          
+          // Stats Display Settings
+          ListTile(
+            leading: const Icon(Icons.visibility_outlined),
+            title: const Text('Görüntülenecek İstatistikler'),
+            onTap: () {
+              Navigator.pop(context);
+              _showStatsDisplaySettingsDialog(context);
+            },
+          ),
+          
+          // About
+          ListTile(
+            leading: const Icon(Icons.info_outline),
+            title: const Text('Hakkında'),
+            onTap: () {
+              Navigator.pop(context);
+              _showAboutDialog(context);
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -384,106 +1263,61 @@ class HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       key: _scaffoldKey,
       backgroundColor: theme.scaffoldBackgroundColor,
-      drawer: Drawer(child: ListView(padding: EdgeInsets.zero,children: <Widget>[Container(height: 120, padding: const EdgeInsets.fromLTRB(16.0, 40.0, 16.0, 8.0), decoration: BoxDecoration(color: theme.colorScheme.primary), child: Align(alignment: Alignment.centerLeft, child: Text('Ayarlar', style: theme.textTheme.headlineSmall?.copyWith(color: theme.colorScheme.onPrimary)))), ListTile(leading: Icon( widget.currentBrightnessPreference == BrightnessPreference.light ? Icons.light_mode_outlined : widget.currentBrightnessPreference == BrightnessPreference.dark ? Icons.dark_mode_outlined : Icons.brightness_auto_outlined ), title: Text( widget.currentBrightnessPreference == BrightnessPreference.light ? 'Mod: Aydınlık' : widget.currentBrightnessPreference == BrightnessPreference.dark ? 'Mod: Koyu' : 'Mod: Sistem Varsayılanı' ), onTap: () { BrightnessPreference nextPreference; if (widget.currentBrightnessPreference == BrightnessPreference.light) { nextPreference = BrightnessPreference.dark; } else if (widget.currentBrightnessPreference == BrightnessPreference.dark) nextPreference = BrightnessPreference.system; else nextPreference = BrightnessPreference.light; widget.onBrightnessPreferenceChanged(nextPreference); }), ListTile(leading: const Icon(Icons.palette_outlined), title: const Text('Temalar'), subtitle: Text('Mevcut: ${_getPaletteDisplayName(widget.currentPalette)}'), onTap: () { Navigator.pop(context); _showThemePaletteSelectionDialog(context); }), ListTile(leading: const Icon(Icons.calendar_today_outlined), title: const Text('Sezon'), subtitle: Text('Geçerli: ${_getDisplaySeason(widget.currentSeasonApiValue)}'), onTap: () { Navigator.pop(context); _showSeasonSelectionDialog(context); }), const Divider(), ListTile(leading: const Icon(Icons.visibility_outlined), title: const Text('Görüntülenecek İstatistikler'), onTap: () { Navigator.pop(context); _showStatsDisplaySettingsDialog(context); }), ListTile(leading: const Icon(Icons.info_outline), title: const Text('Hakkında'), onTap: () { Navigator.pop(context); _showAboutDialog(context); })])),
-      // DEĞİŞİKLİK: Scaffold'un body'si artık Stack
-      body: Stack(
-        children: [
-          // Ana içerik (PageView)
-          NotificationListener<UserScrollNotification>(
-            onNotification: (notification) {
-              final ScrollDirection direction = notification.direction;
-              if (direction == ScrollDirection.reverse && _isNavBarVisible.value) {
-                _isNavBarVisible.value = false;
-              } else if (direction == ScrollDirection.forward && !_isNavBarVisible.value) {
-                _isNavBarVisible.value = true;
-              }
-              return true;
-            },
-            child: PageView(
-              controller: _pageController,
-              physics: const NeverScrollableScrollPhysics(), 
-              children: _widgetOptions,
+      extendBody: false,
+      drawer: _buildDrawer(context, theme),
+      body: PageView(
+        controller: _pageController,
+        physics: const NeverScrollableScrollPhysics(), 
+        children: _widgetOptions,
+      ),
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          color: (isDarkMode 
+              ? theme.colorScheme.surface 
+              : Colors.white).withOpacity(0.95),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 8,
+              offset: const Offset(0, -2),
             ),
+          ],
+        ),
+        child: BottomNavigationBar(
+          currentIndex: _selectedIndex,
+          onTap: _onItemTapped,
+          type: BottomNavigationBarType.fixed,
+          selectedItemColor: theme.colorScheme.primary,
+          unselectedItemColor: isDarkMode 
+              ? Colors.grey[400] 
+              : Colors.grey[600],
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          selectedFontSize: 12,
+          unselectedFontSize: 11,
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.space_dashboard_outlined),
+            activeIcon: Icon(Icons.space_dashboard),
+            label: 'Akış',
           ),
-          // Navigasyon Barı (Üst katman)
-          Positioned(
-            bottom: 20,
-            left: 0,
-            right: 0,
-            child: ValueListenableBuilder<bool>(
-              valueListenable: _isNavBarVisible,
-              builder: (context, isVisible, child) {
-                return AnimatedSlide(
-                  duration: const Duration(milliseconds: 300),
-                  offset: isVisible ? Offset.zero : const Offset(0, 2),
-                  curve: Curves.easeOut,
-                  child: child,
-                );
-              },
-              child: Container(
-                color: Colors.transparent,
-                child: SafeArea(
-                  bottom: false,
-                  child: Padding(
-                    padding: const EdgeInsets.only(left: 72, right: 72, top: 8, bottom: 16),
-                    child: Container(
-                      padding: const EdgeInsets.all(4),
-                      decoration: BoxDecoration(
-                        color: isDarkMode ? const Color(0xFF2D303E) : Colors.white, 
-                        borderRadius: BorderRadius.circular(50),
-                        boxShadow: [
-                          BoxShadow(
-                            blurRadius: 25,
-                            color: isDarkMode ? Colors.black.withOpacity(0.4) : Colors.black.withOpacity(0.1),
-                            offset: const Offset(0, 10),
-                          )
-                        ],
-                      ),
-                      child: GNav(
-                        rippleColor: Colors.transparent,
-                        hoverColor: Colors.transparent,
-                        haptic: true,
-                        tabBorderRadius: 25,
-                        tabBorder: Border.all(color: Colors.transparent),
-                        tabActiveBorder: Border.all(color: theme.colorScheme.primary.withOpacity(0.3), width: 1),
-                        tabShadow: const [],
-                        tabBackgroundColor: Colors.transparent,
-                        tabMargin: const EdgeInsets.symmetric(horizontal: 0),
-                        color: isDarkMode ? Colors.white.withOpacity(0.6) : Colors.grey[600]!.withOpacity(0.6),
-                        activeColor: isDarkMode ? Colors.white : theme.colorScheme.primary,
-                        tabBackgroundGradient: null,
-                        curve: Curves.easeOutQuad,
-                        duration: const Duration(milliseconds: 300),
-                        gap: 5,
-                        iconSize: 22,
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-                        selectedIndex: _selectedIndex,
-                        onTabChange: _onItemTapped,
-                        tabs: const [
-                          GButton(
-                            icon: Icons.space_dashboard_outlined,
-                            text: 'Akış',
-                            textStyle: TextStyle(fontWeight: FontWeight.w500),
-                          ),
-                          GButton(
-                            icon: Icons.sports_soccer_outlined,
-                            text: 'Maçlar',
-                            textStyle: TextStyle(fontWeight: FontWeight.w500),
-                          ),
-                          GButton(
-                            icon: Icons.insights_outlined,
-                            text: 'Analiz',
-                            textStyle: TextStyle(fontWeight: FontWeight.w500),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.sports_soccer_outlined),
+            activeIcon: Icon(Icons.sports_soccer),
+            label: 'Maçlar',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.insights_outlined),
+            activeIcon: Icon(Icons.insights),
+            label: 'Analiz',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person_outline),
+            activeIcon: Icon(Icons.person),
+            label: 'Profil',
           ),
         ],
+        ),
       ),
     );
   }

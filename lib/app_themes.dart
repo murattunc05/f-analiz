@@ -1,8 +1,10 @@
 // lib/app_themes.dart
 
 import 'package:flutter/material.dart';
+import 'design_system/modern_theme.dart';
 
 enum AppThemePalette {
+  modernPremium,
   defaultOrange,
   material3Dynamic,
   oceanBlue,
@@ -19,20 +21,20 @@ String appThemePaletteToString(AppThemePalette palette) {
 }
 
 AppThemePalette stringToAppThemePalette(String? paletteString) {
-  if (paletteString == null) return AppThemePalette.material3Dynamic;
+  if (paletteString == null) return AppThemePalette.modernPremium;
   try {
     return AppThemePalette.values.firstWhere(
       (e) => e.toString().split('.').last == paletteString,
     );
   } catch (e) {
-    return AppThemePalette.material3Dynamic;
+    return AppThemePalette.modernPremium;
   }
 }
 
 class AppThemes {
   // DEĞİŞİKLİK: Arka plan rengi açık gri yapıldı.
   static const Color _lightScaffoldBackground = Color(0xFFF5F5F5);
-  static const Color _darkScaffoldBackground = Color(0xFF121212);
+  static const Color _darkScaffoldBackground = Color(0xFF000000);
 
   static ThemeData _buildThemeFromColorScheme(ColorScheme colorScheme, {
     String appBarTitleFontFamily = 'Roboto', 
@@ -148,9 +150,15 @@ class AppThemes {
         color: colorScheme.outlineVariant.withOpacity(isLight ? 0.3 : 0.4), 
         thickness: 0.5
       ),
-      iconTheme: baseTheme.iconTheme.copyWith( 
-        color: colorScheme.primary.withOpacity(isLight ? 0.75 : 0.85)
-      ),
+iconTheme: baseTheme.iconTheme.copyWith(
+  color: isLight 
+    ? colorScheme.primary.withOpacity(0.8) 
+    : colorScheme.onPrimary.withOpacity(0.95),
+  size: isLight ? 24.0 : 28.0,
+  fill: isLight ? 0.7 : 0.85,
+  opacity: isLight ? 0.9 : 1.0,
+  weight: isLight ? 400 : 500,
+),
       listTileTheme: baseTheme.listTileTheme.copyWith( 
         iconColor: colorScheme.primary.withOpacity(isLight ? 0.8 : 0.9),
       ),
@@ -196,11 +204,14 @@ class AppThemes {
   static final ColorScheme aiStudioLightColorScheme = ColorScheme(brightness: Brightness.light,primary: const Color(0xFF4A80FF), onPrimary: Colors.white,primaryContainer: const Color(0xFFDCE1FF), onPrimaryContainer: const Color(0xFF001849),secondary: const Color(0xFFA0A8C0), onSecondary: const Color(0xFF2B3042), secondaryContainer: const Color(0xFFE0E2F5), onSecondaryContainer: const Color(0xFF181A24), tertiary: const Color(0xFF77536F), onTertiary: Colors.white,tertiaryContainer: const Color(0xFFFFD7F1), onTertiaryContainer: const Color(0xFF2E112A),error: const Color(0xFFBA1A1A), onError: Colors.white,errorContainer: const Color(0xFFFFDAD6), onErrorContainer: const Color(0xFF410002),surface: const Color(0xFFFAF9FF), onSurface: const Color(0xFF1A1B1F), surfaceContainerHighest: const Color(0xFFE1E2EC), onSurfaceVariant: const Color(0xFF44464F),outline: const Color(0xFF767680), outlineVariant: const Color(0xFFC6C6D0),shadow: Colors.black, scrim: Colors.black,inverseSurface: const Color(0xFF2F3034), onInverseSurface: const Color(0xFFF1F0F7),inversePrimary: const Color(0xFFB4C5FF), surfaceTint: const Color(0xFF4A80FF));
   static ThemeData get aiStudioLight => _buildThemeFromColorScheme(aiStudioLightColorScheme, appBarTitleFontSize: 24, useSpecialAppBar: true);
   static final ColorScheme aiStudioDarkColorScheme = ColorScheme(brightness: Brightness.dark,primary: const Color(0xFFB4C5FF), onPrimary: const Color(0xFF172B77),primaryContainer: const Color(0xFF2F428E), onPrimaryContainer: const Color(0xFFDCE1FF),secondary: const Color(0xFFC1C6DD), onSecondary: const Color(0xFF2C3042),secondaryContainer: const Color(0xFF424659), onSecondaryContainer: const Color(0xFFDDE2FF),tertiary: const Color(0xFFE6BAD9), onTertiary: const Color(0xFF46263F),tertiaryContainer: const Color(0xFF5F3C57), onTertiaryContainer: const Color(0xFFFFD7F1),error: const Color(0xFFFFB4AB), onError: const Color(0xFF690005),errorContainer: const Color(0xFF93000A), onErrorContainer: const Color(0xFFFFDAD6),surface: const Color(0xFF1A1B1F), onSurface: const Color(0xFFE4E2E6), surfaceContainerHighest: const Color(0xFF46464F), onSurfaceVariant: const Color(0xFFC6C6D0),outline: const Color(0xFF90909A), outlineVariant: const Color(0xFF46464F),shadow: Colors.black, scrim: Colors.black,inverseSurface: const Color(0xFFE4E2E6), onInverseSurface: const Color(0xFF1A1B1F),inversePrimary: const Color(0xFF4A80FF), surfaceTint: const Color(0xFFB4C5FF));
-  static ThemeData get aiStudioDark => _buildThemeFromColorScheme(aiStudioDarkColorScheme, appBarTitleFontSize: 24, useSpecialAppBar: true);
+  
+
+static ThemeData get aiStudioDark => _buildThemeFromColorScheme(aiStudioDarkColorScheme, appBarTitleFontSize: 24, useSpecialAppBar: true);
 
   static ThemeData getThemeData(AppThemePalette palette, Brightness brightness) {
     bool isLight = brightness == Brightness.light;
     switch (palette) {
+      case AppThemePalette.modernPremium: return isLight ? ModernTheme.lightTheme : ModernTheme.darkTheme;
       case AppThemePalette.defaultOrange: return isLight ? defaultOrangeLight : defaultOrangeDark;
       case AppThemePalette.material3Dynamic: return isLight ? material3DynamicLight : material3DynamicDark;
       case AppThemePalette.oceanBlue: return isLight ? oceanBlueLight : oceanBlueDark;
@@ -210,6 +221,6 @@ class AppThemes {
       case AppThemePalette.lavenderDream: return isLight ? lavenderDreamLight : lavenderDreamDark;
       case AppThemePalette.graphiteNight: return isLight ? graphiteNightLight : graphiteNightDark;
       case AppThemePalette.aiStudio: return isLight ? aiStudioLight : aiStudioDark;
-      }
+    }
   }
 }

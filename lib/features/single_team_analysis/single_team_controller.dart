@@ -2,6 +2,7 @@
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data_service.dart';
+import '../../utils/activity_logger.dart';
 
 // DÜZELTME: State sınıfı UI seçimlerini de içerecek şekilde güncellendi
 class SingleTeamState {
@@ -88,6 +89,12 @@ class SingleTeamController extends StateNotifier<SingleTeamState> {
       if (teamMatches.isEmpty) throw Exception("${state.selectedTeam} için maç bulunamadı.");
       final stats = _dataService.analyzeTeamStats(teamMatches, state.selectedTeam!);
       state = state.copyWith(teamStats: AsyncValue.data(stats));
+
+      // Aktivite ve istatistik güncelleme
+      await ActivityLogger.logTeamAnalysis(
+        state.selectedTeam!,
+        state.selectedLeague!,
+      );
     } catch (e, st) {
       state = state.copyWith(teamStats: AsyncValue.error(e, st));
     }

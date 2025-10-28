@@ -14,6 +14,11 @@ class HomeFeedScreen extends ConsumerStatefulWidget {
   final ScrollController scrollController;
   final GlobalKey<ScaffoldState> scaffoldKey;
   final VoidCallback onSearchTap;
+  final VoidCallback? onThemeSettingsTap;
+  final VoidCallback? onStatsSettingsTap;
+  final VoidCallback? onAboutTap;
+  final Function(String)? onBrightnessChanged;
+  final String? currentBrightness;
 
   const HomeFeedScreen({
     super.key,
@@ -21,6 +26,11 @@ class HomeFeedScreen extends ConsumerStatefulWidget {
     required this.scrollController,
     required this.scaffoldKey,
     required this.onSearchTap,
+    this.onThemeSettingsTap,
+    this.onStatsSettingsTap,
+    this.onAboutTap,
+    this.onBrightnessChanged,
+    this.currentBrightness,
   });
 
   @override
@@ -48,7 +58,7 @@ class _HomeFeedScreenState extends ConsumerState<HomeFeedScreen> with TickerProv
     if (mounted) {
       setState(() {
         if (lastFilters == null || lastFilters.isEmpty) {
-          _selectedLeagues = {'Tümü'};
+          _selectedLeagues = {'Türkiye - Süper Lig', 'İngiltere - Premier Lig'};
         } else {
           _selectedLeagues = lastFilters.toSet();
         }
@@ -149,7 +159,7 @@ class _HomeFeedScreenState extends ConsumerState<HomeFeedScreen> with TickerProv
         : _selectedLeagues.toList();
 
     return SafeArea(
-      bottom: false,
+      bottom: true,
       child: NestedScrollView(
         controller: widget.scrollController,
         headerSliverBuilder: (context, innerBoxIsScrolled) {
@@ -158,6 +168,11 @@ class _HomeFeedScreenState extends ConsumerState<HomeFeedScreen> with TickerProv
               child: ModernHeaderWidget(
                 onSettingsTap: () => widget.scaffoldKey.currentState?.openDrawer(),
                 onSearchTap: widget.onSearchTap,
+                onThemeSettingsTap: widget.onThemeSettingsTap,
+                onStatsSettingsTap: widget.onStatsSettingsTap,
+                onAboutTap: widget.onAboutTap,
+                onBrightnessChanged: widget.onBrightnessChanged,
+                currentBrightness: widget.currentBrightness,
               ),
             ),
             SliverPersistentHeader(

@@ -22,7 +22,12 @@ class SearchableTeam {
 }
 
 class TeamSearchScreen extends StatefulWidget {
-  const TeamSearchScreen({super.key});
+  final Function(String teamName, String league)? onTeamSelected;
+  
+  const TeamSearchScreen({
+    super.key,
+    this.onTeamSelected,
+  });
 
   @override
   State<TeamSearchScreen> createState() => _TeamSearchScreenState();
@@ -120,17 +125,25 @@ class _TeamSearchScreenState extends State<TeamSearchScreen> {
   }
   
   void _onTeamSelected(SearchableTeam team) {
-    // SharedPreferences'tan sezonu almamız lazım
+    // Eğer callback varsa onu çağır (favori takım ekleme için)
+    if (widget.onTeamSelected != null) {
+      widget.onTeamSelected!(team.displayName, team.leagueName);
+      return;
+    }
+    
+    // Normal takım profil sayfasına git
     SharedPreferences.getInstance().then((prefs) {
       final season = prefs.getString('season_preference') ?? DataService.AVAILABLE_SEASONS_API.first;
       
       Navigator.of(context).push(
         MaterialPageRoute(
-          builder: (context) => TeamProfileScreen(
-            originalTeamName: team.originalName,
-            leagueName: team.leagueName,
-            currentSeasonApiValue: season, // Bu parametreyi gönder
-          ),
+          builder: (context) {
+            return TeamProfileScreen(
+              originalTeamName: team.originalName,
+              leagueName: team.leagueName,
+              currentSeasonApiValue: season, // Bu parametreyi gönder
+            );
+          },
         ),
       );
     });

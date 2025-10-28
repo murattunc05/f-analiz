@@ -3,8 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:futbol_analiz_app/main.dart';
 import 'package:futbol_analiz_app/widgets/stat_comparison_row.dart';
-import 'package:cached_network_image/cached_network_image.dart';
-import 'package:futbol_analiz_app/services/logo_service.dart';
+
 import 'package:futbol_analiz_app/services/team_name_service.dart';
 
 class ComparisonStatsCardWidget extends StatelessWidget {
@@ -98,98 +97,493 @@ class ComparisonStatsCardWidget extends StatelessWidget {
     final String team1DisplayTitle = team1Data["displayTeamName"] as String? ?? TeamNameService.getCorrectedTeamName(originalTeam1Name);
     final String originalTeam2Name = team2Data["takim"] as String? ?? "";
     final String team2DisplayTitle = team2Data["displayTeamName"] as String? ?? TeamNameService.getCorrectedTeamName(originalTeam2Name);
-    final String? league1Name = team1Data['leagueNameForLogo'] as String?;
-    final String? league2Name = team2Data['leagueNameForLogo'] as String?;
-    String? team1LogoUrl = (league1Name != null && originalTeam1Name.isNotEmpty) ? LogoService.getTeamLogoUrl(originalTeam1Name, league1Name) : null;
-    String? team2LogoUrl = (league2Name != null && originalTeam2Name.isNotEmpty) ? LogoService.getTeamLogoUrl(originalTeam2Name, league2Name) : null;
-    const double titleLogoSize = 20.0;
+
 
     return Column(
       children: [
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 8.0),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      // TAKIM 1 (SOL)
-                      Expanded(
-                        flex: 4,
-                        child: InkWell(
-                          onTap: () => onShowTeamGraphs(context, team1Data),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.start,
-                            children: [
-                              if (team1LogoUrl != null)
-                                Padding(padding: const EdgeInsets.only(right: 4.0), child: CachedNetworkImage(imageUrl: team1LogoUrl, width: titleLogoSize, height: titleLogoSize, fit: BoxFit.contain, placeholder: (c,u) => const SizedBox(width: titleLogoSize, height: titleLogoSize), errorWidget: (c,u,e) => Icon(Icons.shield_outlined, size: titleLogoSize, color: theme.colorScheme.onSurfaceVariant.withAlpha(128))))
-                              else if (originalTeam1Name.isNotEmpty)
-                                Padding(padding: const EdgeInsets.only(right: 4.0), child: Icon(Icons.shield_outlined, size: titleLogoSize, color: theme.colorScheme.onSurfaceVariant.withAlpha(128))),
-                              Expanded(child: Text(team1DisplayTitle, textAlign: TextAlign.start, style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold, color: theme.colorScheme.primary, fontSize: 14), overflow: TextOverflow.ellipsis, maxLines: 2)),
-                            ],
-                          ),
-                        ),
-                      ),
-                      // ORTA BAŞLIK
-                      Expanded(
-                        flex: 3,
-                        child: Text('İst. (Son $numberOfMatchesToCompare)', textAlign: TextAlign.center, style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w500, color: theme.colorScheme.onSurfaceVariant, fontSize: 11.5), overflow: TextOverflow.ellipsis),
-                      ),
-                      // TAKIM 2 (SAĞ) - DEĞİŞİKLİK BURADA
-                      Expanded(
-                        flex: 4,
-                        child: InkWell(
-                          onTap: () => onShowTeamGraphs(context, team2Data),
-                          child: Row(
-                             mainAxisAlignment: MainAxisAlignment.end, // Sağa yaslamak için
-                            children: [
-                              Expanded(child: Text(team2DisplayTitle, textAlign: TextAlign.end, style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold, color: theme.colorScheme.primary, fontSize: 14), overflow: TextOverflow.ellipsis, maxLines: 2)),
-                              if (team2LogoUrl != null)
-                                Padding(padding: const EdgeInsets.only(left: 4.0), child: CachedNetworkImage(imageUrl: team2LogoUrl, width: titleLogoSize, height: titleLogoSize, fit: BoxFit.contain, placeholder: (c,u) => const SizedBox(width: titleLogoSize, height: titleLogoSize), errorWidget: (c,u,e) => Icon(Icons.shield_outlined, size: titleLogoSize, color: theme.colorScheme.onSurfaceVariant.withAlpha(128))))
-                              else if (originalTeam2Name.isNotEmpty)
-                                Padding(padding: const EdgeInsets.only(left: 4.0), child: Icon(Icons.shield_outlined, size: titleLogoSize, color: theme.colorScheme.onSurfaceVariant.withAlpha(128))),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const Divider(height: 1),
-                if (statRows.isNotEmpty)
-                  ...statRows
-                else
-                  const Padding(padding: EdgeInsets.symmetric(vertical: 16.0), child: Center(child: Text("Görüntülenecek istatistik yok veya ayarlar kapalı."))),
+        Container(
+          margin: const EdgeInsets.symmetric(vertical: 8.0),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20.0),
+            gradient: LinearGradient(
+              colors: [
+                theme.colorScheme.primary.withOpacity(0.03),
+                theme.colorScheme.secondary.withOpacity(0.02),
               ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            border: Border.all(
+              color: theme.colorScheme.primary.withOpacity(0.12),
+              width: 1.2,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: theme.colorScheme.primary.withOpacity(0.08),
+                blurRadius: 15,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(20.0),
+            child: Container(
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surface.withOpacity(0.9),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Premium başlık alanı
+                  Container(
+                    padding: const EdgeInsets.all(20.0),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          theme.colorScheme.primary.withOpacity(0.08),
+                          theme.colorScheme.secondary.withOpacity(0.05),
+                        ],
+                        begin: Alignment.centerLeft,
+                        end: Alignment.centerRight,
+                      ),
+                      border: Border(
+                        bottom: BorderSide(
+                          color: theme.colorScheme.primary.withOpacity(0.1),
+                          width: 1,
+                        ),
+                      ),
+                    ),
+                    child: Column(
+                      children: [
+                        // Başlık
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [
+                                    theme.colorScheme.primary,
+                                    theme.colorScheme.secondary,
+                                  ],
+                                ),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Icon(Icons.analytics_outlined, color: Colors.white, size: 18),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'İstatistiksel Karşılaştırma',
+                                    style: theme.textTheme.titleMedium?.copyWith(
+                                      fontWeight: FontWeight.bold,
+                                      color: theme.colorScheme.onSurface,
+                                    ),
+                                  ),
+                                  Text(
+                                    'Son $numberOfMatchesToCompare maç verilerine dayalı',
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      color: theme.colorScheme.onSurface.withOpacity(0.7),
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: theme.colorScheme.primary.withOpacity(0.15),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                'DETAY',
+                                style: theme.textTheme.labelSmall?.copyWith(
+                                  color: theme.colorScheme.primary,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 10,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        // Takım başlıkları
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            // TAKIM 1 (SOL)
+                            Expanded(
+                              flex: 4,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                decoration: BoxDecoration(
+                                  color: theme.colorScheme.primary.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: theme.colorScheme.primary.withOpacity(0.2),
+                                  ),
+                                ),
+                                child: InkWell(
+                                  onTap: () => onShowTeamGraphs(context, team1Data),
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: Text(
+                                    team1DisplayTitle, 
+                                    textAlign: TextAlign.center, 
+                                    style: theme.textTheme.titleSmall?.copyWith(
+                                      fontWeight: FontWeight.bold, 
+                                      color: theme.colorScheme.primary, 
+                                      fontSize: 14
+                                    ), 
+                                    overflow: TextOverflow.ellipsis, 
+                                    maxLines: 2
+                                  ),
+                                ),
+                              ),
+                            ),
+                            // ORTA BAŞLIK
+                            Expanded(
+                              flex: 2,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(vertical: 8),
+                                child: Column(
+                                  children: [
+                                    Icon(
+                                      Icons.compare_arrows,
+                                      color: theme.colorScheme.onSurfaceVariant,
+                                      size: 20,
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'VS', 
+                                      textAlign: TextAlign.center, 
+                                      style: theme.textTheme.labelMedium?.copyWith(
+                                        fontWeight: FontWeight.bold, 
+                                        color: theme.colorScheme.onSurfaceVariant, 
+                                        fontSize: 12
+                                      )
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            // TAKIM 2 (SAĞ)
+                            Expanded(
+                              flex: 4,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                decoration: BoxDecoration(
+                                  color: theme.colorScheme.secondary.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: theme.colorScheme.secondary.withOpacity(0.2),
+                                  ),
+                                ),
+                                child: InkWell(
+                                  onTap: () => onShowTeamGraphs(context, team2Data),
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: Text(
+                                    team2DisplayTitle, 
+                                    textAlign: TextAlign.center, 
+                                    style: theme.textTheme.titleSmall?.copyWith(
+                                      fontWeight: FontWeight.bold, 
+                                      color: theme.colorScheme.secondary, 
+                                      fontSize: 14
+                                    ), 
+                                    overflow: TextOverflow.ellipsis, 
+                                    maxLines: 2
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  // İstatistikler alanı
+                  Container(
+                    padding: const EdgeInsets.all(20.0),
+                    child: Column(
+                      children: [
+                        if (statRows.isNotEmpty)
+                          ...statRows
+                        else
+                          Container(
+                            padding: const EdgeInsets.all(24.0),
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.surfaceVariant.withOpacity(0.3),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.info_outline,
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                  size: 20,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  "Görüntülenecek istatistik yok veya ayarlar kapalı.",
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    color: theme.colorScheme.onSurfaceVariant,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
         if (statsSettings.showSon5MacDetaylari) ...[
-          //... ExpansionTile kısımları aynı kalıyor ...
-           const SizedBox(height: 12),
-          ExpansionTile(
-            tilePadding: const EdgeInsets.symmetric(horizontal: 8.0), iconColor: theme.colorScheme.primary, collapsedIconColor: theme.colorScheme.onSurfaceVariant.withAlpha(204),
-            title: Text('$team1DisplayTitle Son $analyzedMatchCount1 Maç Detayları', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
-            children: <Widget>[
-                if (matchDetails1.isNotEmpty)
-                  Padding(padding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 8.0), child: Column(children: [ ...matchDetails1.map((match) => _buildShortMatchSummaryRow(match, theme)), const Divider(height: 12, thickness: 0.3, indent: 8, endIndent: 8), ListTile( dense: true, contentPadding: const EdgeInsets.symmetric(horizontal: 8.0), title: Text('Tüm ${matchDetails1.length} Maçın Detaylarını Gör', style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.primary, fontWeight: FontWeight.w600)), leading: Icon(Icons.open_in_new, color: theme.colorScheme.primary, size: 18), onTap: () { HapticFeedback.lightImpact(); onShowDetailedMatchList(context, matchDetails1, team1DisplayTitle); })]))
-                else
-                  Padding(padding: const EdgeInsets.all(12.0), child: Text("Maç detayı bulunamadı.", style: theme.textTheme.bodySmall?.copyWith(fontStyle: FontStyle.italic))),
+          const SizedBox(height: 16),
+          // Premium maç detayları kartları
+          Container(
+            margin: const EdgeInsets.symmetric(vertical: 4.0),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16.0),
+              gradient: LinearGradient(
+                colors: [
+                  theme.colorScheme.primary.withOpacity(0.02),
+                  theme.colorScheme.surface,
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              border: Border.all(
+                color: theme.colorScheme.primary.withOpacity(0.1),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: theme.colorScheme.shadow.withOpacity(0.05),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
               ],
+            ),
+            child: Theme(
+              data: theme.copyWith(dividerColor: Colors.transparent),
+              child: ExpansionTile(
+                tilePadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                iconColor: theme.colorScheme.primary,
+                collapsedIconColor: theme.colorScheme.onSurfaceVariant,
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.primary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    Icons.history,
+                    color: theme.colorScheme.primary,
+                    size: 18,
+                  ),
+                ),
+                title: Text(
+                  '$team1DisplayTitle Son $analyzedMatchCount1 Maç',
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: theme.colorScheme.onSurface,
+                  ),
+                ),
+                subtitle: Text(
+                  'Detaylı maç sonuçları ve performans',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurface.withOpacity(0.7),
+                  ),
+                ),
+                children: <Widget>[
+                  Container(
+                    margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surface,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: theme.colorScheme.outline.withOpacity(0.1),
+                      ),
+                    ),
+                    child: Column(
+                      children: [
+                        if (matchDetails1.isNotEmpty) ...[
+                          ...matchDetails1.map((match) => _buildShortMatchSummaryRow(match, theme)),
+                          const SizedBox(height: 12),
+                          Container(
+                            width: double.infinity,
+                            child: ElevatedButton.icon(
+                              onPressed: () {
+                                HapticFeedback.lightImpact();
+                                onShowDetailedMatchList(context, matchDetails1, team1DisplayTitle);
+                              },
+                              icon: const Icon(Icons.open_in_new, size: 16),
+                              label: Text('Tüm ${matchDetails1.length} Maçın Detayını Gör'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: theme.colorScheme.primary.withOpacity(0.1),
+                                foregroundColor: theme.colorScheme.primary,
+                                elevation: 0,
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                              ),
+                            ),
+                          ),
+                        ] else
+                          Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.surfaceVariant.withOpacity(0.3),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.info_outline,
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                  size: 16,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  "Maç detayı bulunamadı.",
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    fontStyle: FontStyle.italic,
+                                    color: theme.colorScheme.onSurfaceVariant,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
-          ExpansionTile(
-            tilePadding: const EdgeInsets.symmetric(horizontal: 8.0), iconColor: theme.colorScheme.primary, collapsedIconColor: theme.colorScheme.onSurfaceVariant.withAlpha(204),
-            title: Text('$team2DisplayTitle Son $analyzedMatchCount2 Maç Detayları', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
-            children: <Widget>[
-                if (matchDetails2.isNotEmpty)
-                  Padding(padding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 8.0), child: Column( children: [ ...matchDetails2.map((match) => _buildShortMatchSummaryRow(match, theme)), const Divider(height: 12, thickness: 0.3, indent: 8, endIndent: 8), ListTile( dense: true, contentPadding: const EdgeInsets.symmetric(horizontal: 8.0), title: Text('Tüm ${matchDetails2.length} Maçın Detaylarını Gör', style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.primary, fontWeight: FontWeight.w600)), leading: Icon(Icons.open_in_new, color: theme.colorScheme.primary, size: 18), onTap: () { HapticFeedback.lightImpact(); onShowDetailedMatchList(context, matchDetails2, team2DisplayTitle); })]))
-                else
-                  Padding(padding: const EdgeInsets.all(12.0), child: Text("Maç detayı bulunamadı.", style: theme.textTheme.bodySmall?.copyWith(fontStyle: FontStyle.italic))),
+          Container(
+            margin: const EdgeInsets.symmetric(vertical: 4.0),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16.0),
+              gradient: LinearGradient(
+                colors: [
+                  theme.colorScheme.secondary.withOpacity(0.02),
+                  theme.colorScheme.surface,
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              border: Border.all(
+                color: theme.colorScheme.secondary.withOpacity(0.1),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: theme.colorScheme.shadow.withOpacity(0.05),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
               ],
+            ),
+            child: Theme(
+              data: theme.copyWith(dividerColor: Colors.transparent),
+              child: ExpansionTile(
+                tilePadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                iconColor: theme.colorScheme.secondary,
+                collapsedIconColor: theme.colorScheme.onSurfaceVariant,
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.secondary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    Icons.history,
+                    color: theme.colorScheme.secondary,
+                    size: 18,
+                  ),
+                ),
+                title: Text(
+                  '$team2DisplayTitle Son $analyzedMatchCount2 Maç',
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: theme.colorScheme.onSurface,
+                  ),
+                ),
+                subtitle: Text(
+                  'Detaylı maç sonuçları ve performans',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurface.withOpacity(0.7),
+                  ),
+                ),
+                children: <Widget>[
+                  Container(
+                    margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surface,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: theme.colorScheme.outline.withOpacity(0.1),
+                      ),
+                    ),
+                    child: Column(
+                      children: [
+                        if (matchDetails2.isNotEmpty) ...[
+                          ...matchDetails2.map((match) => _buildShortMatchSummaryRow(match, theme)),
+                          const SizedBox(height: 12),
+                          Container(
+                            width: double.infinity,
+                            child: ElevatedButton.icon(
+                              onPressed: () {
+                                HapticFeedback.lightImpact();
+                                onShowDetailedMatchList(context, matchDetails2, team2DisplayTitle);
+                              },
+                              icon: const Icon(Icons.open_in_new, size: 16),
+                              label: Text('Tüm ${matchDetails2.length} Maçın Detayını Gör'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: theme.colorScheme.secondary.withOpacity(0.1),
+                                foregroundColor: theme.colorScheme.secondary,
+                                elevation: 0,
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                              ),
+                            ),
+                          ),
+                        ] else
+                          Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.surfaceVariant.withOpacity(0.3),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.info_outline,
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                  size: 16,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  "Maç detayı bulunamadı.",
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    fontStyle: FontStyle.italic,
+                                    color: theme.colorScheme.onSurfaceVariant,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
         ]
       ],

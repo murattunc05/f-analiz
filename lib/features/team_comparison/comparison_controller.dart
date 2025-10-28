@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data_service.dart';
 import '../../services/team_name_service.dart';
+import '../../utils/activity_logger.dart';
 
 // YENİ: copyWith metodunu daha temiz hale getirmek için ValueGetter kullanacağız.
 // Bu, bir değerin "değiştirilmedi" durumu ile "null olarak ayarlandı" durumu
@@ -173,6 +174,13 @@ class ComparisonController extends StateNotifier<ComparisonState> {
         team1Stats: AsyncValue.data(stats1),
         team2Stats: AsyncValue.data(stats2),
         comparisonResult: AsyncValue.data(result),
+      );
+
+      // Aktivite ve istatistik güncelleme
+      await ActivityLogger.logTeamComparison(
+        state.originalTeam1!,
+        state.originalTeam2!,
+        state.selectedLeague!,
       );
 
     } catch (e, st) {

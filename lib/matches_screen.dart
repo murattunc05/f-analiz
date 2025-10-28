@@ -99,12 +99,22 @@ class MatchesScreen extends ConsumerWidget {
   final GlobalKey<ScaffoldState> scaffoldKey;
   final VoidCallback onSearchTap;
   final ScrollController scrollController;
+  final VoidCallback? onThemeSettingsTap;
+  final VoidCallback? onStatsSettingsTap;
+  final VoidCallback? onAboutTap;
+  final Function(String)? onBrightnessChanged;
+  final String? currentBrightness;
 
   const MatchesScreen({
     super.key,
     required this.scaffoldKey,
     required this.onSearchTap,
     required this.scrollController,
+    this.onThemeSettingsTap,
+    this.onStatsSettingsTap,
+    this.onAboutTap,
+    this.onBrightnessChanged,
+    this.currentBrightness,
   });
 
   @override
@@ -115,6 +125,11 @@ class MatchesScreen extends ConsumerWidget {
         scaffoldKey: scaffoldKey,
         onSearchTap: onSearchTap,
         scrollController: scrollController,
+        onThemeSettingsTap: onThemeSettingsTap,
+        onStatsSettingsTap: onStatsSettingsTap,
+        onAboutTap: onAboutTap,
+        onBrightnessChanged: onBrightnessChanged,
+        currentBrightness: currentBrightness,
       ),
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (e, st) => Center(child: Text('Uygulama başlatılamadı: $e')),
@@ -126,11 +141,21 @@ class _MatchesView extends ConsumerWidget {
   final GlobalKey<ScaffoldState> scaffoldKey;
   final VoidCallback onSearchTap;
   final ScrollController scrollController;
+  final VoidCallback? onThemeSettingsTap;
+  final VoidCallback? onStatsSettingsTap;
+  final VoidCallback? onAboutTap;
+  final Function(String)? onBrightnessChanged;
+  final String? currentBrightness;
 
   const _MatchesView({
     required this.scaffoldKey,
     required this.onSearchTap,
     required this.scrollController,
+    this.onThemeSettingsTap,
+    this.onStatsSettingsTap,
+    this.onAboutTap,
+    this.onBrightnessChanged,
+    this.currentBrightness,
   });
 
   static final List<List<Color>> _gradientPalettes = [
@@ -158,6 +183,11 @@ class _MatchesView extends ConsumerWidget {
               child: ModernHeaderWidget(
                 onSettingsTap: () => scaffoldKey.currentState?.openDrawer(),
                 onSearchTap: onSearchTap,
+                onThemeSettingsTap: onThemeSettingsTap,
+                onStatsSettingsTap: onStatsSettingsTap,
+                onAboutTap: onAboutTap,
+                onBrightnessChanged: onBrightnessChanged,
+                currentBrightness: currentBrightness,
               ),
             ),
           ];

@@ -94,7 +94,7 @@ class DataService {
   };
 
   static const List<String> AVAILABLE_SEASONS_API = [
-    "2425", "2324", "2223", "2122", "2021", "1920", "1819", "1718", "1617", "1516",
+    "2526", "2425", "2324", "2223", "2122", "2021", "1920", "1819", "1718", "1617", "1516",
     "1415", "1314", "1213", "1112", "1011", "0910", "0809", "0708", "0607", "0506",
     "0405", "0304", "0203", "0102", "0001"
   ];
@@ -133,6 +133,67 @@ class DataService {
   }
 
   static List<String> get leagueDisplayNames => _LIG_URL_TEMPLATES.keys.toList();
+
+  // Lig bazında takımları getir (örnek veri - gerçek implementasyon API'den gelecek)
+  static List<String> getTeamsForLeague(String league) {
+    // Bu örnek veri - gerçek uygulamada API'den gelecek
+    final Map<String, List<String>> leagueTeams = {
+      'Türkiye - Süper Lig': [
+        'Galatasaray', 'Fenerbahçe', 'Beşiktaş', 'Trabzonspor', 'Başakşehir',
+        'Konyaspor', 'Sivasspor', 'Alanyaspor', 'Kasımpaşa', 'Antalyaspor',
+        'Kayserispor', 'Gaziantep FK', 'Hatayspor', 'Pendikspor', 'Samsunspor',
+        'Fatih Karagümrük', 'Adana Demirspor', 'Rizespor', 'Ankaragücü', 'İstanbulspor'
+      ],
+      'İngiltere - Premier Lig': [
+        'Arsenal', 'Chelsea', 'Liverpool', 'Manchester City', 'Manchester United',
+        'Tottenham', 'Newcastle', 'Brighton', 'Aston Villa', 'West Ham',
+        'Crystal Palace', 'Fulham', 'Wolves', 'Everton', 'Brentford',
+        'Nottingham Forest', 'Bournemouth', 'Sheffield United', 'Burnley', 'Luton Town'
+      ],
+      'İspanya - La Liga': [
+        'Real Madrid', 'Barcelona', 'Atletico Madrid', 'Sevilla', 'Real Betis',
+        'Real Sociedad', 'Villarreal', 'Athletic Bilbao', 'Valencia', 'Getafe',
+        'Osasuna', 'Celta Vigo', 'Mallorca', 'Las Palmas', 'Girona',
+        'Alaves', 'Rayo Vallecano', 'Cadiz', 'Granada', 'Almeria'
+      ],
+      'İtalya - Serie A': [
+        'Juventus', 'Inter Milan', 'AC Milan', 'Napoli', 'Roma',
+        'Lazio', 'Atalanta', 'Fiorentina', 'Bologna', 'Torino',
+        'Genoa', 'Monza', 'Verona', 'Lecce', 'Udinese',
+        'Cagliari', 'Empoli', 'Frosinone', 'Sassuolo', 'Salernitana'
+      ],
+      'Almanya - Bundesliga': [
+        'Bayern Munich', 'Borussia Dortmund', 'RB Leipzig', 'Union Berlin', 'SC Freiburg',
+        'Bayer Leverkusen', 'Eintracht Frankfurt', 'Wolfsburg', 'Mainz', 'Borussia Monchengladbach',
+        'FC Koln', 'Hoffenheim', 'Werder Bremen', 'VfL Bochum', 'FC Augsburg',
+        'Heidenheim', 'SV Darmstadt 98', 'VfB Stuttgart', 'Hertha Berlin', 'Schalke 04'
+      ],
+      'Fransa - Ligue 1': [
+        'Paris Saint-Germain', 'Marseille', 'Monaco', 'Lille', 'Lyon',
+        'Nice', 'Lens', 'Rennes', 'Montpellier', 'Toulouse',
+        'Strasbourg', 'Brest', 'Reims', 'Le Havre', 'Nantes',
+        'Lorient', 'Metz', 'Clermont', 'Ajaccio', 'Angers'
+      ],
+      'Hollanda - Eredivisie': [
+        'Ajax', 'PSV Eindhoven', 'Feyenoord', 'AZ Alkmaar', 'FC Twente',
+        'FC Utrecht', 'Vitesse', 'Go Ahead Eagles', 'Heerenveen', 'NEC Nijmegen',
+        'Sparta Rotterdam', 'PEC Zwolle', 'Fortuna Sittard', 'RKC Waalwijk', 'Almere City',
+        'FC Volendam', 'Excelsior', 'Willem II'
+      ],
+      'Belçika - Pro Lig': [
+        'Club Brugge', 'Royal Antwerp', 'Union Saint-Gilloise', 'Genk', 'Anderlecht',
+        'Gent', 'Standard Liege', 'Mechelen', 'Cercle Brugge', 'Sint-Truiden',
+        'Kortrijk', 'Westerlo', 'Charleroi', 'Oostende', 'Eupen', 'Seraing'
+      ],
+      'Portekiz - Premier Lig': [
+        'Porto', 'Benfica', 'Sporting CP', 'Braga', 'Vitoria Guimaraes',
+        'Rio Ave', 'Boavista', 'Moreirense', 'Famalicao', 'Santa Clara',
+        'Gil Vicente', 'Arouca', 'Estoril', 'Vizela', 'Chaves', 'Portimonense'
+      ],
+    };
+    
+    return leagueTeams[league] ?? [];
+  }
 
   static String getDisplaySeasonFromApiValue(String apiValue) {
       final seasonsMap = AVAILABLE_SEASONS_DISPLAY;
@@ -557,4 +618,6 @@ class DataService {
     } catch (e) { /* Hata olursa null döner */ }
     return null;
   }
+
+
 }

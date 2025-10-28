@@ -63,7 +63,7 @@ class TeamNameService {
     'samsunspor': 'Samsunspor', 'yilport samsunspor': 'Samsunspor',
     'pendikspor': 'Pendikspor', 'siltaş yapı pendikspor': 'Pendikspor',
     'eyupspor': 'Eyüpspor',
-    'goztepe': 'Göztepe', 'goztepeas': 'Göztepe', 'goztep': 'Göztepe', 'Goztep': 'Göztepe',
+    'goztepe': 'Göztepe', 'goztepeas': 'Göztepe', 'goztep': 'Göztepe', 'Goztep': 'Göztepe', 'Genclerbirligi': 'Gençlerbirliği',
 
     // İngiltere - Premier Lig Örnekleri
     'manchester city': 'Man. City', 'man city': 'Man. City', // Daha kısa

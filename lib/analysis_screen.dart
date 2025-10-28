@@ -12,6 +12,11 @@ class AnalysisScreen extends StatefulWidget {
   final ScrollController scrollController;
   final GlobalKey<ScaffoldState> scaffoldKey;
   final VoidCallback onSearchTap;
+  final VoidCallback? onThemeSettingsTap;
+  final VoidCallback? onStatsSettingsTap;
+  final VoidCallback? onAboutTap;
+  final Function(String)? onBrightnessChanged;
+  final String? currentBrightness;
 
   const AnalysisScreen({
     super.key,
@@ -20,6 +25,11 @@ class AnalysisScreen extends StatefulWidget {
     required this.scrollController,
     required this.scaffoldKey,
     required this.onSearchTap,
+    this.onThemeSettingsTap,
+    this.onStatsSettingsTap,
+    this.onAboutTap,
+    this.onBrightnessChanged,
+    this.currentBrightness,
   });
 
   @override
@@ -55,6 +65,11 @@ class _AnalysisScreenState extends State<AnalysisScreen> with TickerProviderStat
               child: ModernHeaderWidget(
                 onSettingsTap: () => widget.scaffoldKey.currentState?.openDrawer(),
                 onSearchTap: widget.onSearchTap,
+                onThemeSettingsTap: widget.onThemeSettingsTap,
+                onStatsSettingsTap: widget.onStatsSettingsTap,
+                onAboutTap: widget.onAboutTap,
+                onBrightnessChanged: widget.onBrightnessChanged,
+                currentBrightness: widget.currentBrightness,
               ),
             ),
             SliverPersistentHeader(

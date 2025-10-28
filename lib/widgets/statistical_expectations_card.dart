@@ -44,6 +44,22 @@ class _StatisticalExpectationsCardState extends State<StatisticalExpectationsCar
     super.dispose();
   }
 
+  // Yardımcı fonksiyon: Tam sayı olmayan değerlere ~ sembolü ekler
+  String _formatNumericValue(dynamic value) {
+    if (value == null) return 'N/A';
+    
+    final double doubleValue = (value as num).toDouble();
+    final int roundedValue = doubleValue.round();
+    
+    // Eğer orijinal değer tam sayıya eşitse ~ sembolü ekleme
+    if (doubleValue == roundedValue.toDouble()) {
+      return roundedValue.toString();
+    } else {
+      // Tam sayı değilse ~ sembolü ekle
+      return '~$roundedValue';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return _buildCardContent(context);
@@ -154,29 +170,89 @@ class _StatisticalExpectationsCardState extends State<StatisticalExpectationsCar
         const SizedBox(height: 12),
         _buildExpectationRow(
           theme: theme,
-          icon: Icons.flag_outlined,
-          label: 'Toplam Korner',
-          value: '~${data['beklenenToplamKorner']?.toStringAsFixed(1) ?? 'N/A'}',
-          progress: ((data['beklenenToplamKorner'] as num? ?? 0) / 15).clamp(0.0, 1.0), // 15 korneri max kabul edelim
-          color: Colors.orange,
+          icon: Icons.sports_soccer_outlined,
+          label: 'Beklenen Toplam Gol',
+          value: _formatNumericValue(data['beklenenToplamGol']),
+          progress: ((data['beklenenToplamGol'] as num? ?? 0) / 5).clamp(0.0, 1.0),
+          color: Colors.purple,
+          isNumeric: true,
         ),
         const SizedBox(height: 12),
         _buildExpectationRow(
           theme: theme,
-          icon: Icons.style_outlined,
-          label: 'Toplam Sarı Kart',
-          value: '~${data['beklenenToplamSariKart']?.toStringAsFixed(1) ?? 'N/A'}',
-          progress: ((data['beklenenToplamSariKart'] as num? ?? 0) / 7).clamp(0.0, 1.0), // 7 kartı max kabul edelim
-          color: Colors.amber,
+          icon: Icons.sports_outlined,
+          label: 'İY Beklenen Gol',
+          value: _formatNumericValue(data['beklenenIyToplamGol']),
+          progress: ((data['beklenenIyToplamGol'] as num? ?? 0) / 3).clamp(0.0, 1.0),
+          color: Colors.indigo,
+          isNumeric: true,
+        ),
+        const SizedBox(height: 12),
+        _buildExpectationRow(
+          theme: theme,
+          icon: Icons.flag_outlined,
+          label: 'Toplam Korner',
+          value: _formatNumericValue(data['beklenenToplamKorner']),
+          progress: ((data['beklenenToplamKorner'] as num? ?? 0) / 15).clamp(0.0, 1.0),
+          color: Colors.orange,
+          isNumeric: true,
+        ),
+        const SizedBox(height: 12),
+        _buildExpectationRow(
+          theme: theme,
+          icon: Icons.sports_basketball_outlined,
+          label: 'Toplam Şut',
+          value: _formatNumericValue(data['beklenenToplamSut']),
+          progress: ((data['beklenenToplamSut'] as num? ?? 0) / 25).clamp(0.0, 1.0),
+          color: Colors.teal,
+          isNumeric: true,
+        ),
+        const SizedBox(height: 12),
+        _buildExpectationRow(
+          theme: theme,
+          icon: Icons.gps_fixed_outlined,
+          label: 'Toplam İsabetli Şut',
+          value: _formatNumericValue(data['beklenenToplamIsabetliSut']),
+          progress: ((data['beklenenToplamIsabetliSut'] as num? ?? 0) / 12).clamp(0.0, 1.0),
+          color: Colors.cyan,
+          isNumeric: true,
         ),
         const SizedBox(height: 12),
         _buildExpectationRow(
           theme: theme,
           icon: Icons.shield_outlined,
           label: 'Toplam Faul',
-          value: '~${data['beklenenToplamFaul']?.toStringAsFixed(1) ?? 'N/A'}',
-          progress: ((data['beklenenToplamFaul'] as num? ?? 0) / 30).clamp(0.0, 1.0), // 30 faulü max kabul edelim
+          value: _formatNumericValue(data['beklenenToplamFaul']),
+          progress: ((data['beklenenToplamFaul'] as num? ?? 0) / 30).clamp(0.0, 1.0),
           color: Colors.red,
+          isNumeric: true,
+        ),
+        const SizedBox(height: 12),
+        _buildExpectationRow(
+          theme: theme,
+          icon: Icons.style_outlined,
+          label: 'Toplam Sarı Kart',
+          value: _formatNumericValue(data['beklenenToplamSariKart']),
+          progress: ((data['beklenenToplamSariKart'] as num? ?? 0) / 7).clamp(0.0, 1.0),
+          color: Colors.amber,
+          isNumeric: true,
+        ),
+        const SizedBox(height: 16),
+        // Açıklama metni
+        Container(
+          padding: const EdgeInsets.all(12.0),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surfaceVariant.withOpacity(0.3),
+            borderRadius: BorderRadius.circular(8.0),
+          ),
+          child: Text(
+            'Bu beklentiler yalnızca istatistiklerden oluşturulmuş ortalama değerlerdir. Kesinlik taşımaz ve takım kaliteleri göz önüne alınmamıştır.',
+            style: theme.textTheme.bodySmall?.copyWith(
+              fontStyle: FontStyle.italic,
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+            textAlign: TextAlign.center,
+          ),
         ),
       ],
     );
@@ -222,6 +298,7 @@ class _StatisticalExpectationsCardState extends State<StatisticalExpectationsCar
     required String value,
     required double progress,
     required Color color,
+    bool isNumeric = false,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -236,18 +313,12 @@ class _StatisticalExpectationsCardState extends State<StatisticalExpectationsCar
                 style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
               ),
             ),
-            AnimatedBuilder(
-              animation: _controller,
-              builder: (context, child) {
-                final animatedValue = _controller.value * progress;
-                return Text(
-                  '${(animatedValue * 100).toStringAsFixed(0)}%',
-                  style: theme.textTheme.bodyLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: color,
-                  ),
-                );
-              },
+            Text(
+              value,
+              style: theme.textTheme.bodyLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
             ),
           ],
         ),

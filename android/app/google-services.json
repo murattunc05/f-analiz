@@ -1,0 +1,54 @@
+{
+  "project_info": {
+    "project_number": "574970005987",
+    "project_id": "goalitycs-b4f05",
+    "storage_bucket": "goalitycs-b4f05.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:574970005987:android:201872f9126015290178d6",
+        "android_client_info": {
+          "package_name": "com.example.futbol_analiz_app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "574970005987-3h76etsqc2sfm98euovj9t6q7nf7792c.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.futbol_analiz_app",
+            "certificate_hash": "3a886f9160f33336fc63a840822722ad3899c7f6"
+          }
+        },
+        {
+          "client_id": "574970005987-uu137hqlrkj4u1ppsj49fc09soqle5en.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAF_xXzBIHZeIg8ULGJgQeI-5bq0Fywixs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "574970005987-uu137hqlrkj4u1ppsj49fc09soqle5en.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "574970005987-b2id76mq7svp2snot7ctrc2uduo1tid6.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.futbolAnalizApp"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

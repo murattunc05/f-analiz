@@ -53,17 +53,17 @@ class TeamProfileController extends StateNotifier<TeamProfileState> {
     state = state.copyWith(profileData: const AsyncValue.loading());
     try {
       final leagueUrl = DataService.getLeagueUrl(leagueName, season);
-      if (leagueUrl == null) throw Exception("Lig URL'si bulunamadı.");
+      if (leagueUrl == null) throw Exception("Lig URL'si bulunamadı: $leagueName");
 
       final csvData = await _dataService.fetchData(leagueUrl);
-      if (csvData == null) throw Exception("Lig verisi çekilemedi.");
+      if (csvData == null) throw Exception("Lig verisi çekilemedi: $leagueUrl");
 
       final parsedData = _dataService.parseCsv(csvData);
       final headers = _dataService.getCsvHeaders(parsedData);
       if(headers.isEmpty || parsedData.length < 2) throw Exception("CSV verisi hatalı veya boş.");
 
       final allMatches = _dataService.filterMatchesByTeam(parsedData, headers, teamName);
-      if (allMatches.isEmpty) throw Exception("Bu takım için maç verisi bulunamadı.");
+      if (allMatches.isEmpty) throw Exception("Bu takım için maç verisi bulunamadı: $teamName");
       
       final homeMatches = allMatches.where((m) => m['HomeTeam'] == teamName).toList();
       final awayMatches = allMatches.where((m) => m['AwayTeam'] == teamName).toList();
